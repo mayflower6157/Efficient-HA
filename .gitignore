@@ -1,11 +1,12 @@
 # Byte-compiled / optimized / DLL files
 data/
+val2014/
 datasets/
 outputs/
 __pycache__/
 *.py[codz]
 *$py.class
-
+*.jpg
 # C extensions
 *.so
 
