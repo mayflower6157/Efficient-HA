@@ -117,7 +117,7 @@ def sample(
     stopping_criteria: StoppingCriteriaList,
     generation_config: GenerationConfig,
     synced_gpus: bool,
-    streamer: Optional["BaseStreamer"],
+    streamer: Optional["BaseStreamer"] = None,
     **model_kwargs,
 ) -> Union[GenerateNonBeamOutput, torch.LongTensor]:
     r"""
@@ -180,19 +180,23 @@ def sample(
     batch_size, cur_len = input_ids.shape[:2]
     this_peer_finished = False
     unfinished_sequences = torch.ones(batch_size, dtype=torch.long, device=input_ids.device)
-    model_kwargs = self._get_initial_cache_position(input_ids, model_kwargs)
+    model_kwargs = self._get_initial_cache_position(cur_len, input_ids.device, model_kwargs)
+
 
     model_forward = self.__call__
-    if isinstance(model_kwargs.get("past_key_values"), Cache):
-        is_compileable = model_kwargs["past_key_values"].is_compileable and self._supports_static_cache
-        if getattr(self, "hf_quantizer", None) is not None:
-            is_compileable &= self.hf_quantizer.is_compileable
-        is_compileable = is_compileable and not generation_config.disable_compile
-        if is_compileable and (
-            self.device.type == "cuda" or generation_config.compile_config._compile_all_devices
-        ):
-            os.environ["TOKENIZERS_PARALLELISM"] = "0"
-            model_forward = self.get_compiled_call(generation_config.compile_config)
+    compile_forward = self._valid_auto_compile_criteria(model_kwargs, generation_config)
+    if compile_forward:
+        os.environ["TOKENIZERS_PARALLELISM"] = "0"
+        # If we use FA2 and a static cache, we cannot compile with fullgraph
+        if self.config._attn_implementation == "flash_attention_2":
+            # only raise warning if the user passed an explicit compile-config
+            if generation_config.compile_config is not None and generation_config.compile_config.fullgraph:
+                logger.warning_once(
+                    "When using Flash Attention 2 and a static cache, you cannot use the option `CompileConfig(fullgraph=True)` as "
+                    "FA2 introduces graph breaks. We overrode the option with `fullgraph=False`."
+                )
+                generation_config.compile_config.fullgraph = False
+        model_forward = self.get_compiled_call(generation_config.compile_config)
 
     if generation_config.prefill_chunk_size is not None:
         model_kwargs = self._prefill_chunking(input_ids, generation_config, **model_kwargs)
@@ -249,8 +253,8 @@ def sample(
             next_token_logits_cd = outputs_cd.logits[:, -1, :]
         
             ## cd_comments: pre-process logits from contrastive inputs
-            cd_alpha = model_kwargs.get("cd_alpha") if model_kwargs.get("cd_alpha") is not None else 0.5
-            cd_beta = model_kwargs.get("cd_beta") if model_kwargs.get("cd_beta") is not None else 0.1
+            cd_alpha = generation_config.get("cd_alpha") if generation_config.get("cd_alpha") is not None else 0.5
+            cd_beta = generation_config.get("cd_beta") if generation_config.get("cd_beta") is not None else 0.1
             # pre-process distribution
             cutoff = torch.log(torch.tensor(cd_beta)) + next_token_logits.max(dim=-1, keepdim=True).values
         

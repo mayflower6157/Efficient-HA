@@ -38,14 +38,14 @@ def load_model(model_id,args):
 
 
 
-def get_response(model, processor,args, image_path, question,neg_image_path=None):
+def get_response(model, processor,args, image_path, question):
     messages = [
         {
             "role": "user",
             "content": [
                 {"type": "image", "image": image_path},
                 {"type": "text", "text": (
-                    "You FIRST think about the reasoning process as an internal monologue and then provide the final answer. The reasoning process MUST BE enclosed within <think> </think> tags. The final answer MUST BE in <answer> </answer> tags.\n" + question
+                    question
                 )},
             ],
         }
@@ -65,18 +65,18 @@ def get_response(model, processor,args, image_path, question,neg_image_path=None
 
     with torch.no_grad():
         if args.method == "greedy":
-            generated_ids = model.generate(**inputs, max_new_tokens=4096)
+            generated_ids = model.generate(**inputs, max_new_tokens=args.max_tokens, do_sample=False)
         elif args.method == "beam":
-            generated_ids = model.generate(**inputs, max_new_tokens=4096, num_beams=5
+            generated_ids = model.generate(**inputs, max_new_tokens=args.max_tokens, num_beams=5
                                            )
             
         elif args.method == "dola":
-            generated_ids = model.generate(**inputs, max_new_tokens=4096, dola_layers=[16,18,20,22,24,26,28], do_sample=False,repetition_penalty=1.2)
+            generated_ids = model.generate(**inputs, max_new_tokens=args.max_tokens, custom_generate="transformers-community/dola",dola_layers=[25,35], do_sample=False,repetition_penalty=1.2,trust_remote_code=True)
         elif args.method == "deco":
             evolve_deco_greedy()
 
-            generated_ids = model.generate(**inputs, max_new_tokens=4096,top_p=None,top_k=None, do_sample=False, alpha=0.6, threshold_top_p=0.9, threshold_top_k=20,
-                                           early_exit_layers=[i for i in range(20,27)],return_dict_in_generate=True,
+            generated_ids = model.generate(**inputs, max_new_tokens=args.max_tokens, top_p=None, top_k=None, do_sample=False, alpha=0.6, threshold_top_p=0.9, threshold_top_k=20,
+                                           early_exit_layers=[i for i in range(25,35)], return_dict_in_generate=True,
                     output_hidden_states=True)
             
             generated_ids = generated_ids.sequences
@@ -90,10 +90,10 @@ def get_response(model, processor,args, image_path, question,neg_image_path=None
 
             generated_ids = model.generate(
                 **inputs,
-                max_new_tokens=4096,
+                max_new_tokens=args.max_tokens,
                 pixel_values_cd=(inputs_cd['pixel_values'].unsqueeze(0).half().cuda()),
-                cd_alpha = args.cd_alpha,
-                cd_beta = args.cd_beta,
+                cd_alpha=args.cd_alpha,
+                cd_beta=args.cd_beta,
                 do_sample=True)
         else:
             raise ValueError(f"Unknown generation method: {args.method}")
@@ -128,6 +128,7 @@ def process_json(model, processor, args, output_json):
     processed_idx=[item['image_id'] for item in current_data]
 
 
+    question ='Describe this image in detail.'
 
     error_id=[]
     for idx, line in enumerate(image_ids):
@@ -135,7 +136,6 @@ def process_json(model, processor, args, output_json):
             continue
         image_path = "COCO_val2014_" + str(line['image_id']).zfill(12) + ".jpg"
         image_path = os.path.join(args.datapath, image_path)
-        question ='Describe this image in detail.'
 
 
 
@@ -169,13 +169,15 @@ if __name__ == "__main__":
                         help='Output file to store model responses')
     parser.add_argument('--model_id', type=str, default="Qwen/Qwen2.5-VL-3B-Instruct",
                         help='Path to the model')
-    parser.add_argument('--datapath', type=str, default="/home/li0007xu/EH/Efficient-HA/data/val2014",
+    
+    parser.add_argument('--datapath', type=str, default="/home/li0007xu/EH/Efficient-HA/val2014",
                         help='Path to the data')
-    parser.add_argument('--method', type=str, default="greedy")
+    parser.add_argument('--method', type=str, default="vcd")
     parser.add_argument("--cd_alpha", type=float, default=1)
     parser.add_argument("--cd_beta", type=float, default=0.1)
     parser.add_argument("--noise_step", type=int, default=500)
     parser.add_argument('--device', type=str, default="cuda:0")
+    parser.add_argument('--max_tokens', type=int, default=64)
     args = parser.parse_args()
 
     model, processor = load_model(args.model_id,args)
