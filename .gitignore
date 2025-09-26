@@ -2,6 +2,7 @@
 data/
 val2014/
 datasets/
+result/
 outputs/
 __pycache__/
 *.py[codz]
