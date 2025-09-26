@@ -27,6 +27,7 @@ def load_model(model_id,args):
 
     model = AutoModelForVision2Seq.from_pretrained(
     model_id,
+    dtype='auto',
     trust_remote_code=True,
     device_map=args.device
 )
@@ -165,7 +166,7 @@ def process_json(model, processor, args, output_json):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=str,
-                        default='/home/li0007xu/Reasoning/test/output_deco.json',
+                        default='/home/li0007xu/Reasoning/test/output_1.json',
                         help='Output file to store model responses')
     parser.add_argument('--model_id', type=str, default="Qwen/Qwen2.5-VL-3B-Instruct",
                         help='Path to the model')

@@ -27,6 +27,7 @@ def load_model(model_id,args):
 
     model = AutoModelForVision2Seq.from_pretrained(
     model_id,
+    dtype='auto',
     trust_remote_code=True,
     device_map=args.device
 )
