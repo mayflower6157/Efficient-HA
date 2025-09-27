@@ -443,7 +443,7 @@ def print_metrics(hallucination_cap_dict, quiet=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--cap_file", type=str, default='/home/li0007xu/EH/Efficient-HA/result/chair/Qwen2.5-VL-3B-Instruct/output_greedy.json',
+    parser.add_argument("--cap_file", type=str, default='/home/li0007xu/EH/Efficient-HA/result/chair/Qwen2.5-VL-3B-Instruct/output_deco.json',
                         help="path towards json or jsonl saving image ids and their captions in list of dict.")
     parser.add_argument("--image_id_key", type=str, default="image_id",
                         help="in each dict of cap_file, which key stores image id of coco.")

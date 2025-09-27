@@ -128,11 +128,9 @@ def process_json(model, processor, args, output_json):
     os.makedirs(os.path.dirname(output_json), exist_ok=True)
 
     ans_file = open(output_json, "w")
-    i=0
+
     for line in tqdm(questions):
-        if i==5:
-            break
-        i+=1
+
     # for (input_ids, image_tensor, image_sizes), line in tqdm(zip(data_loader, questions), total=len(questions)):
      
         image_file = line["question_id"]

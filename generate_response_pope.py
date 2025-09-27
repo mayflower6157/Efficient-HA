@@ -52,7 +52,8 @@ def print_acc(pred_list, label_list,args,base_dir):
     print('Recall: {}'.format(recall))
     print('F1 score: {}'.format(f1))
     print('Yes ratio: {}'.format(yes_ratio))
-    with open(os.path.join(base_dir, 'POPE__type_{}.jsonl'.format(args.pope_type)), "a") as f:
+    os.makedirs(base_dir, exist_ok=True)
+    with open(os.path.join(base_dir, 'POPE_type_{}_{}.jsonl'.format(args.pope_type,args.method)), "a") as f:
         json.dump({
             "TP": TP,
             "FP": FP,
@@ -192,8 +193,7 @@ def process_json(model, processor, args, output):
     pred_list, pred_list_s, label_list = [], [], []
 
     for batch_id, data in tqdm(enumerate(pope_loader), total=len(pope_loader)):
-        if batch_id ==5:
-            break
+ 
         image_path = data["image_path"][0]
         qu = data["query"][0]
         label = data["label"]
@@ -221,7 +221,7 @@ if __name__ == "__main__":
                         default='/home/li0007xu/Reasoning/test',
                         help='Output file to store model responses')
 
-    parser.add_argument("--pope-type", type=str, help="random",default='random', choices=['random', 'popular', 'adversarial'])
+    parser.add_argument("--pope_type", type=str, help="random",default='random', choices=['random', 'popular', 'adversarial'])
     parser.add_argument('--model_id', type=str, default="Qwen/Qwen2.5-VL-3B-Instruct",
                         help='Path to the model')
     

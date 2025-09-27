@@ -110,31 +110,20 @@ def get_response(model, processor,args, image_path, question):
 
 def process_json(model, processor, args, output_json):
 
-    with open('/home/li0007xu/P1/TTAH/Qwen2.5-VL/amberdata/AMBER/data/query/query_all.json', "r", encoding="utf-8") as f:
+    with open('AMBER/data/query/query_all.json', "r", encoding="utf-8") as f:
         json_data = json.load(f) 
 
 
     total_samples = len(json_data)
     os.makedirs(os.path.dirname(output_json), exist_ok=True)
+    ans_file = open(output_json, "w")
 
-    if not os.path.exists(output_json):
-        with open(output_json, 'w') as f:
-            json.dump([], f)
-    with open(output_json, 'r') as f:
-
-        current_data=json.load(f) 
-    processed_idx=[item['image_id'] for item in current_data]
-
-
-    question ='Describe this image in detail.'
-
-    error_id=[]
     for idx, line in enumerate(json_data):
-        if idx in processed_idx:
-            continue
-        image_path = line['image']
-        image_path = os.path.join(args.datapath, image_path)
 
+        image_path = line['image']
+        question = line['query']
+        image_path = os.path.join(args.datapath, image_path)
+        idx = line['id']
 
 
 
@@ -147,15 +136,12 @@ def process_json(model, processor, args, output_json):
 
         print(f"Processed sample {idx + 1}/{total_samples}: {response[:50]}...")
 
-        with open(output_json, 'r') as f:
-            current_data = json.load(f)
 
-        current_data.append(line)
 
-        with open(output_json, 'w') as f:
-            json.dump(current_data, f, indent=2)
+        res_dict = {"id": idx,"response": response, "prompt": question, "image": line['image']}
+        ans_file.write(json.dumps(res_dict) + "\n")
+        ans_file.flush()
 
-    print(error_id)
 
     print(f"All results saved to {output_json}")
 
@@ -163,7 +149,7 @@ def process_json(model, processor, args, output_json):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=str,
-                        default='/home/li0007xu/Reasoning/test/output_deco.json',
+                        default='/home/li0007xu/Reasoning/test/output_deco.jsonl',
                         help='Output file to store model responses')
     parser.add_argument('--model_id', type=str, default="Qwen/Qwen2.5-VL-3B-Instruct",
                         help='Path to the model')
