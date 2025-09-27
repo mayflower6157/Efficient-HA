@@ -5,7 +5,7 @@ import json
 import numpy as np
 import torch
 import re
-from transformers import AutoProcessor, AutoModelForVision2Seq,CLIPImageProcessor
+from transformers import AutoProcessor, AutoModelForImageTextToText, CLIPImageProcessor #, AutoModelForVision2Seq,CLIPImageProcessor
 from qwen_vl_utils import process_vision_info
 import time
 from utils.vcd_add_noise import add_diffusion_noise,add_diffusion_noise_pil
@@ -25,10 +25,11 @@ def load_model(model_id,args):
     processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True,
                                               min_pixels=min_pixels, max_pixels=max_pixels)
 
-    model = AutoModelForVision2Seq.from_pretrained(
+    model = AutoModelForImageTextToText.from_pretrained(
     model_id,
-    dtype='auto',
+    dtype=torch.bfloat16,
     trust_remote_code=True,
+    attn_implementation="flash_attention_2",
     device_map=args.device
 )
 
@@ -40,6 +41,7 @@ def load_model(model_id,args):
 
 
 def get_response(model, processor,args, image_path, question):
+    # For Qwen
     messages = [
         {
             "role": "user",
@@ -63,6 +65,35 @@ def get_response(model, processor,args, image_path, question):
         return_tensors="pt",
     )
     inputs = inputs.to(model.device)
+    
+    '''For Gemma Messages: text + image
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": question},
+            ],
+        }
+    ]
+
+    # Load the image
+    image = Image.open(image_path).convert("RGB")
+
+    # Prepare text input with chat template
+    text = processor.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+
+    # Build processor inputs (Paligemma style)
+    inputs = processor(
+        text=text,
+        images=[image],          # Pass image directly here
+        padding=True,
+        return_tensors="pt"
+    ).to(model.device)
+    '''
 
     with torch.no_grad():
         if args.method == "greedy":
@@ -110,7 +141,7 @@ def get_response(model, processor,args, image_path, question):
 
 def process_json(model, processor, args, output_json):
     image_ids = []
-    with open('/home/li0007xu/EH/Efficient-HA/opera_log/llava-1.5/greedy.jsonl', "r", encoding="utf-8") as f:
+    with open('/home/mayflower/Efficient-HA/opera_log/llava-1.5/greedy.jsonl', "r", encoding="utf-8") as f:
             for line in f.readlines():
                 json_data = json.loads(line)
                 json_data.pop('caption')
