@@ -26,12 +26,12 @@ def load_model(model_id,args):
                                               min_pixels=min_pixels, max_pixels=max_pixels)
 
     model = AutoModelForImageTextToText.from_pretrained(
-    model_id,
-    dtype=torch.bfloat16,
-    trust_remote_code=True,
-    attn_implementation="flash_attention_2",
-    device_map=args.device
-)
+        model_id,
+        dtype=torch.bfloat16,
+        trust_remote_code=True,
+        attn_implementation="flash_attention_2",
+        device_map=args.device
+    )
 
 
     model.eval()
@@ -160,7 +160,7 @@ def process_json(model, processor, args, output_json):
     processed_idx=[item['image_id'] for item in current_data]
 
 
-    question ='Describe this image in detail.'
+    question = 'Describe this image in detail.'
 
     error_id=[]
     for idx, line in enumerate(image_ids):
