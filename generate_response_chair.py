@@ -12,6 +12,7 @@ from transformers import (
 )  # , AutoModelForVision2Seq,CLIPImageProcessor
 from qwen_vl_utils import process_vision_info
 import time
+import tqdm
 from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
 
 np.random.seed(42)
@@ -165,20 +166,22 @@ def process_json(model, processor, args, output_json):
     question = "Describe this image in detail."
 
     error_id = []
-    for idx, line in enumerate(image_ids):
+
+    for idx, line in enumerate(
+        tqdm(image_ids, total=total_samples, desc="Processing", unit="img")
+    ):
         if idx in processed_idx:
             continue
+
         image_path = "COCO_val2014_" + str(line["image_id"]).zfill(12) + ".jpg"
         image_path = os.path.join(args.datapath, image_path)
 
         response = get_response(model, processor, args, image_path, question)
-
         torch.cuda.empty_cache()
 
         line["response"] = response
 
-        print(f"Processed sample {idx + 1}/{total_samples}: {response[:50]}...")
-
+        # tqdm handles ETA + progress bar, so no manual print needed
         with open(output_json, "r") as f:
             current_data = json.load(f)
 
