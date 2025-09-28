@@ -14,7 +14,7 @@ METHODS=("greedy" "beam" "dola" "deco")
 for METHOD in "${METHODS[@]}"; do
     echo ">>> Running ${MODEL_ID} with method: ${METHOD}"
 
-    python generate_response_chair.py \
+    python ../generate_response_chair.py \
         --model_id "$MODEL_ID" \
         --method "$METHOD" \
         --datapath "$DATA_PATH" \
