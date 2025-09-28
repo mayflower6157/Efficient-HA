@@ -12,7 +12,7 @@ from transformers import (
 )  # , AutoModelForVision2Seq,CLIPImageProcessor
 from qwen_vl_utils import process_vision_info
 import time
-import tqdm
+from tqdm import tqdm
 from utils.logger_utils import print_run_header, print_run_summary
 from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
 
