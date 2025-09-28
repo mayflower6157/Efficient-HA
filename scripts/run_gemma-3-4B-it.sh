@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # ========= User Config =========
-MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
+MODEL_ID="google/gemma-3-4b-it"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
 MAX_TOKENS=64
 
 # List of generation methods you want to run
-METHODS=("greedy" "beam" "dola" "deco")
+METHODS=("greedy" "dola" "deco")
 
 # ========= Run Loop =========
 for METHOD in "${METHODS[@]}"; do
