@@ -13,6 +13,7 @@ from transformers import (
 from qwen_vl_utils import process_vision_info
 import time
 import tqdm
+from utils.logger_utils import print_run_header, print_run_summary
 from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
 
 np.random.seed(42)
@@ -167,6 +168,8 @@ def process_json(model, processor, args, output_json):
 
     error_id = []
 
+    start_time = time.time()
+
     for idx, line in enumerate(
         tqdm(image_ids, total=total_samples, desc="Processing", unit="img")
     ):
@@ -192,7 +195,7 @@ def process_json(model, processor, args, output_json):
 
     print(error_id)
 
-    print(f"All results saved to {output_json}")
+    print_run_summary(start_time, total_samples, output_json)
 
 
 if __name__ == "__main__":
@@ -232,7 +235,7 @@ if __name__ == "__main__":
 
         args.output = f"{base_dir}/responses.json"
 
-    print(f"Saving results to {args.output}")
+    print_run_header(args, args.output)
 
     model, processor = load_model(args.model_id, args)
 
