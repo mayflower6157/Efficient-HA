@@ -7,6 +7,9 @@ DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
 MAX_TOKENS=64
 
+# Base output directory
+OUTPUT_DIR="./opera_log/chair_eval_results"
+
 # List of generation methods you want to run
 METHODS=("greedy" "beam" "dola" "deco")
 
@@ -19,7 +22,8 @@ for METHOD in "${METHODS[@]}"; do
         --method "$METHOD" \
         --datapath "$DATA_PATH" \
         --device "$DEVICE" \
-        --max_tokens "$MAX_TOKENS"
+        --max_tokens "$MAX_TOKENS" \
+        --output "${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses.json"
 
     echo ">>> Finished ${MODEL_ID} with method: ${METHOD}"
     echo
