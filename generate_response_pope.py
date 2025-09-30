@@ -181,7 +181,7 @@ def process_json(model, processor, args, output):
     )
     pope_loader = torch.utils.data.DataLoader(
         pope_dataset, 
-        batch_size=1, 
+        batch_size=8, 
         shuffle=False, 
         num_workers=2,
         drop_last=False
