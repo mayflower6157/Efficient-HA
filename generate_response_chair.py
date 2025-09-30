@@ -25,6 +25,25 @@ from utils.vcd_sample import evolve_vcd_sampling
 from utils.deco_greedy import evolve_deco_greedy
 
 
+def get_num_layers(model):
+    # 1. Direct field (LLaMA/Qwen style)
+    if hasattr(model.config, "num_hidden_layers"):
+        return model.config.num_hidden_layers
+
+    # 2. Gemma-3 style (nested inside text_config)
+    elif hasattr(model.config, "text_config") and hasattr(model.config.text_config, "num_hidden_layers"):
+        return model.config.text_config.num_hidden_layers
+
+    # 3. Decoder layers (OPT, LLaMA, Gemma, etc.)
+    elif hasattr(model, "model") and hasattr(model.model, "layers"):
+        return len(model.model.layers)
+
+    # 4. Encoder layers (T5, BART)
+    elif hasattr(model, "encoder") and hasattr(model.encoder, "layers"):
+        return len(model.encoder.layers)
+
+    raise ValueError("Could not auto-detect number of layers for this model.")
+    
 def load_model(model_id, args):
     """Load the model and processor."""
     min_pixels = 256 * 28 * 28
@@ -82,18 +101,25 @@ def get_response(model, processor, args, image_path, question):
             )
 
         elif args.method == "dola":
+            num_layers = get_num_layers(model)   
+            max_layer_index = num_layers   # last hidden state index = num_layers
+            dola_layers = list(range(max(1, num_layers - 9), max_layer_index + 1))
+            
             generated_ids = model.generate(
                 **inputs,
                 max_new_tokens=args.max_tokens,
                 custom_generate="transformers-community/dola",
-                dola_layers=[25, 35],
+                dola_layers=dola_layers,
                 do_sample=False,
                 repetition_penalty=1.2,
                 trust_remote_code=True,
             )
         elif args.method == "deco":
             evolve_deco_greedy()
-
+            num_layers = get_num_layers(model)
+            max_layer_index = num_layers   # last hidden state index = num_layers
+            early_exit_layers = list(range(max(1, num_layers - 9), max_layer_index + 1))
+            
             generated_ids = model.generate(
                 **inputs,
                 max_new_tokens=args.max_tokens,
@@ -103,7 +129,7 @@ def get_response(model, processor, args, image_path, question):
                 alpha=0.6,
                 threshold_top_p=0.9,
                 threshold_top_k=20,
-                early_exit_layers=[i for i in range(25, 35)],
+                early_exit_layers=early_exit_layers,
                 return_dict_in_generate=True,
                 output_hidden_states=True,
             )

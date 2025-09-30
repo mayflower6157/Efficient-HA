@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 # ========= User Config =========
-MODEL_ID="google/gemma-3n-E4B-it"
+#MODEL_ID="google/gemma-3n-E2B-it"
+MODEL_ID="google/gemma-3-4b-it"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
 DEVICE="cuda:0"
@@ -12,12 +12,12 @@ MAX_TOKENS=64
 OUTPUT_DIR="./opera_log/chair_eval_results"
 
 # List of generation methods you want to run
-METHODS=("deco")
+METHODS=("dola")
 
 # ========= Run Loop =========
 for METHOD in "${METHODS[@]}"; do
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/metric.json"
+    RESP_FILE="test/responses.json"
+    METRIC_FILE="test/metric.json"
 
     # Step 1: Generate responses if not already present
     if [ ! -f "$RESP_FILE" ]; then

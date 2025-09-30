@@ -293,27 +293,37 @@ def deco_greedy_search(
 
         if is_prefill:
             outputs = self(**model_inputs, return_dict=True)
-            is_prefill = False
+            is_prefill = False      
         else:
             outputs = model_forward(**model_inputs, return_dict=True)
         logits_dict = {}
 
+        
         for _, early_exit_layer in enumerate(early_exit_layers):
-            like_final_outputs = outputs.hidden_states[early_exit_layer]
+            like_final_outputs = normalize_hidden_state(outputs.hidden_states[early_exit_layer])
             logits = lm_head(like_final_outputs)
             logits_dict[early_exit_layer] = logits
-        logits_dict[len(outputs.hidden_states)] = lm_head(outputs.hidden_states[-1])
+
+        final_hidden = normalize_hidden_state(outputs.hidden_states[-1])
+        final_logits = lm_head(final_hidden)
+        logits_dict[len(outputs.hidden_states)] = final_logits
+  
+        # Build last layer candidate tokens
         last_layer_tokens_logits = outputs.logits[:, -1, :]
         last_layer_tokens_probs = nn.functional.softmax(last_layer_tokens_logits, dim=-1).squeeze(dim=0).squeeze(dim=0)
         candidate_tokens_probs, candidate_tokens_ids = torch.topk(last_layer_tokens_probs, dim=-1, k=threshold_top_k)
+        
+        # Top-P (nucleus sampling)
         candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
         candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
         candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
         candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
-            
+        
+        # Early-exit logits
         stacked_early_exit_layers = torch.stack([logits_dict[i][:, -1, :] for i in early_exit_layers], dim=0)
         softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)
         candidate_tokens_early_exit_probs = softmax_early_exit_layers[:,:,candidate_tokens_ids].squeeze(dim=1) # [10 layers, 10 candidate tokens]
+
         max_candidate_tokens_idx = torch.argmax(candidate_tokens_early_exit_probs)
         premature_max_probs = candidate_tokens_early_exit_probs.max().item()
         target_layers = max_candidate_tokens_idx // candidate_tokens_early_exit_probs.size(1) 
@@ -623,6 +633,20 @@ def deco_greedy_search(
 #                 )
 #         else:
 #             return input_ids
+
+def normalize_hidden_state(h):
+    """
+    Normalize a single hidden_state tensor.
+    - If shape is [B, 1, S, H], average across batch -> [1, S, H]
+    - Otherwise return as is
+    """
+    if isinstance(h, tuple):  # in case it's wrapped
+        h = h[0]
+    if hasattr(h, "dim") and h.dim() == 4:
+        # Example: [4, 1, 275, 2048] -> [1, 275, 2048]
+        h = h.mean(dim=0)
+    return h
+    
 
 def evolve_deco_greedy():
 
