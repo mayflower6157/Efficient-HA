@@ -2,17 +2,17 @@
 set -euo pipefail
 
 # ========= User Config =========
-MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
+MODEL_ID="google/gemma-3-4b-it"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
 BATCH_SIZE=16
 MAX_TOKENS=8
 
 # Base output directory
-OUTPUT_DIR="./test/"
+OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # List of generation methods you want to run
-METHODS=("greedy")
+METHODS=("beam")
 #POPE_TYPES=("random")
 #METHODS=("greedy" "beam")
 POPE_TYPES=("random" "popular" "adversarial")

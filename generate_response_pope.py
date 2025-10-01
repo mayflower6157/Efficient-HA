@@ -141,6 +141,10 @@ def load_model(model_id, args):
         print(f"Error loading model {model_id}: {e}")
         raise
 
+def format_images_for_gemma(images):
+    """Format images Gemma-3 style: [[img1], [img2], ...]."""
+    return [[img] for img in images]
+    
 def prepare_inputs(model, processor, image_paths, questions):
     """Build model-ready inputs from batches of images + text."""
     
@@ -166,23 +170,30 @@ def prepare_inputs(model, processor, image_paths, questions):
             ],
         })
     
-    # Apply chat template to all messages
+    # Create one text + image pair per sample
+    # Apply chat template
     texts = [
         processor.apply_chat_template([m], tokenize=False, add_generation_prompt=True)
         for m in messages
     ]
     
-    # Process vision info for all messages
-    image_inputs, video_inputs = process_vision_info(messages)
+    # 🚀 Instead of process_vision_info → pass image_paths directly
+    model_type = getattr(model.config, "model_type", "").lower()
+    if "gemma" in model_type:
+        # Gemma expects list-of-lists [[img1],[img2],...]
+        image_paths = format_images_for_gemma(image_paths)
+    else:
+        # Qwen, LLaVA etc. accept flat list [img1,img2,...]
+        image_paths = image_paths
     
-    # Process all inputs together as a batch
+    
     inputs = processor(
         text=texts,
-        images=image_inputs,
-        videos=video_inputs,
+        images=image_paths,    # let processor handle batching
         padding=True,
         return_tensors="pt",
     )
+
     
     return inputs.to(model.device)
 
