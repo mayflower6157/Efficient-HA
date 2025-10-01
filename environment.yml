@@ -36,6 +36,7 @@ dependencies:
     - pandas
     - regex==2025.9.18
     - safetensors==0.6.2
+    - scikit-learn
     - sympy==1.13.3
     - timm
     - tokenizers==0.22.1

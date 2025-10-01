@@ -38,7 +38,7 @@ def print_run_pope_header(args, output):
     print("=" * 50)
 
 
-def print_run_popo_summary(start_time, total_samples, output_file):
+def print_run_pope_summary(start_time, total_samples, output_file):
     total_elapsed = time.time() - start_time
     avg_time = total_elapsed / total_samples if total_samples > 0 else 0
 

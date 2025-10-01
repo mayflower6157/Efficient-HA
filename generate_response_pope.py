@@ -1,3 +1,4 @@
+import copy
 import gc
 import os
 import argparse
@@ -115,41 +116,62 @@ def recorder(out, pred_list):
 
 def load_model(model_id, args):
     """Load the model and processor."""
-    min_pixels = 256 * 28 * 28
-    max_pixels = 512 * 28 * 28
-    processor = AutoProcessor.from_pretrained(
-        model_id, trust_remote_code=True, min_pixels=min_pixels, max_pixels=max_pixels
-    )
+    try:
+        min_pixels = 256 * 28 * 28
+        max_pixels = 512 * 28 * 28
+        processor = AutoProcessor.from_pretrained(
+            model_id, trust_remote_code=True, min_pixels=min_pixels, max_pixels=max_pixels
+        )
+    
+        model = AutoModelForImageTextToText.from_pretrained(
+            model_id,
+            dtype=torch.bfloat16,
+            trust_remote_code=True,
+            attn_implementation="flash_attention_2",
+            device_map=args.device,
+        )
+    
+        model.eval()
+        return model, processor
+    except Exception as e:
+        print(f"Error loading model {model_id}: {e}")
+        raise
 
-    model = AutoModelForImageTextToText.from_pretrained(
-        model_id,
-        dtype=torch.bfloat16,
-        trust_remote_code=True,
-        attn_implementation="flash_attention_2",
-        device_map=args.device,
-    )
-
-    model.eval()
-    return model, processor
-
-
-def prepare_inputs(model, processor, image_path, question):
-    """Build model-ready inputs from image + text."""
-    messages = [
-        {
+def prepare_inputs(model, processor, image_paths, questions):
+    """Build model-ready inputs from batches of images + text."""
+    
+    # Ensure inputs are lists for batch processing
+    if isinstance(image_paths, str):
+        image_paths = [image_paths]
+    if isinstance(questions, str):
+        questions = [questions]
+    
+    # Validate batch sizes match
+    batch_size = len(image_paths)
+    if len(questions) != batch_size:
+        raise ValueError(f"Batch size mismatch: {len(image_paths)} images vs {len(questions)} questions")
+    
+    # Build messages for each item in the batch
+    messages = []
+    for img_path, question in zip(image_paths, questions):
+        messages.append({
             "role": "user",
             "content": [
-                {"type": "image", "image": img},
-                {"type": "text", "text": q},
+                {"type": "image", "image": img_path},
+                {"type": "text", "text": question},
             ],
-        }
-        for img, q in zip(image_path, question)
-    ]
+        })
+    
+    # Apply chat template to all messages
     texts = [
-        processor.apply_chat_template(m, tokenize=False, add_generation_prompt=True)
+        processor.apply_chat_template([m], tokenize=False, add_generation_prompt=True)
         for m in messages
     ]
+    
+    # Process vision info for all messages
     image_inputs, video_inputs = process_vision_info(messages)
+    
+    # Process all inputs together as a batch
     inputs = processor(
         text=texts,
         images=image_inputs,
@@ -157,6 +179,7 @@ def prepare_inputs(model, processor, image_path, question):
         padding=True,
         return_tensors="pt",
     )
+    
     return inputs.to(model.device)
 
 
@@ -199,15 +222,16 @@ def generate_ids(model, inputs, args):
         return out.sequences
 
     if method == "vcd":
-        evolve_vcd_sampling()  # side-effect initialization
-        inputs_cd = copy.deepcopy(inputs)
-        inputs_cd["pixel_values"] = add_diffusion_noise(
+        evolve_vcd_sampling()
+        # Fix: Handle batched pixel_values correctly
+        pixel_values_noisy = add_diffusion_noise(
             inputs["pixel_values"], args.noise_step
         )
+        
         return model.generate(
             **inputs,
             max_new_tokens=args.max_tokens,
-            pixel_values_cd=(inputs_cd["pixel_values"].unsqueeze(0).half().cuda()),
+            pixel_values_cd=pixel_values_noisy,  # Already in correct shape/dtype
             cd_alpha=args.cd_alpha,
             cd_beta=args.cd_beta,
             do_sample=True,
@@ -218,18 +242,21 @@ def generate_ids(model, inputs, args):
 
 def decode_output(processor, inputs, generated_ids):
     """Trim input tokens and decode generated sequence into text."""
+    # Handle attention_mask to get actual input lengths per sample
+    input_lengths = inputs.attention_mask.sum(dim=1).tolist()
+    
     trimmed = [
-        out_ids[len(in_ids) :] if len(out_ids) > len(in_ids) else out_ids
-        for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        out_ids[input_len:] if len(out_ids) > input_len else out_ids
+        for input_len, out_ids in zip(input_lengths, generated_ids)
     ]
     return processor.batch_decode(
         trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )
 
 
-def get_response(model, processor, args, image_path, question):
+def get_response(model, processor, args, image_paths, questions):
     """High-level wrapper: prepare → generate → decode."""
-    inputs = prepare_inputs(model, processor, image_path, question)
+    inputs = prepare_inputs(model, processor, image_paths, questions)
     with torch.inference_mode():
         generated_ids = generate_ids(model, inputs, args)
         return decode_output(processor, inputs, generated_ids)
@@ -253,6 +280,7 @@ def process_json(model, processor, args, output):
     os.makedirs(os.path.dirname(output), exist_ok=True)
 
     pred_list, label_list = [], []
+    detailed_results = []  # Store detailed predictions
     start_time = time.time()
     for batch_id, data in tqdm(enumerate(pope_loader), total=len(pope_loader)):
         # Loop over items in the batch
@@ -263,9 +291,24 @@ def process_json(model, processor, args, output):
             pred_list = recorder(resp, pred_list)
             label_list.append(int(label))
 
-        if batch_id % 10 == 0:
+        # Store detailed result
+            detailed_results.append({
+                "image": os.path.basename(img_path),
+                "question": query,
+                "response": resp,
+                "prediction": pred,
+                "label": int(label),
+                "correct": pred == int(label)
+            })
+        if batch_id % 5 == 0:
             torch.cuda.empty_cache()
-
+    # Save detailed results
+    if output:
+        detail_file = output.replace(".jsonl", "_detailed.jsonl")
+        with open(detail_file, "w") as f:
+            for result in detailed_results:
+                f.write(json.dumps(result) + "\n")
+                
     if len(pred_list) != 0:
         print_acc(pred_list, label_list, args, args.output)
 
@@ -273,6 +316,20 @@ def process_json(model, processor, args, output):
     print_run_pope_summary(start_time, total_samples, args.output)
 
 
+def validate_args(args):
+    """Validate argument combinations."""
+    if args.method in ["dola", "deco"] and args.early_exit_layers < 1:
+        raise ValueError(f"early_exit_layers must be >= 1 for {args.method}")
+    
+    if args.batch_size > 16 and args.method == "vcd":
+        print("Warning: Large batch size with VCD may cause OOM. Consider reducing.")
+    
+    if not os.path.exists(args.datapath):
+        raise FileNotFoundError(f"Data path not found: {args.datapath}")
+    
+    return args
+
+    
 if __name__ == "__main__":
     set_seed(seed=42)
     parser = argparse.ArgumentParser()
@@ -314,9 +371,10 @@ if __name__ == "__main__":
     parser.add_argument("--cd_beta", type=float, default=0.1)
     parser.add_argument("--noise_step", type=int, default=500)
     parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--max_tokens", type=int, default=64)
+    parser.add_argument("--max_tokens", type=int, default=8)
     parser.add_argument("--early_exit_layers", type=int, default=10)
     args = parser.parse_args()
+    args = validate_args(args)
 
     # Print run header
     print_run_pope_header(args, args.output)
