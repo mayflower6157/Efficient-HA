@@ -105,13 +105,13 @@ def print_acc(pred_list, label_list, args, base_dir):
         f.write("\n")
 
 
-def recorder(out, pred_list):
-    text = re.sub(r"[.,]", "", out).lower()
-    if any(w in text.split() for w in ["no", "not"]) or "n't" in text:
-        pred_list.append(0)
+def recorder(out):
+    """Return prediction instead of modifying list in-place."""
+    text = out.lower()
+    if "n't" in text or any(f" {w} " in f" {text} " for w in ["no", "not"]):
+        return 0
     else:
-        pred_list.append(1)
-    return pred_list
+        return 1
 
 
 def load_model(model_id, args):
@@ -122,7 +122,11 @@ def load_model(model_id, args):
         processor = AutoProcessor.from_pretrained(
             model_id, trust_remote_code=True, min_pixels=min_pixels, max_pixels=max_pixels
         )
-    
+
+        # ✅ Fix: decoder-only models like Qwen expect left-padding
+        if hasattr(processor, "tokenizer"):
+            processor.tokenizer.padding_side = "left"
+            
         model = AutoModelForImageTextToText.from_pretrained(
             model_id,
             dtype=torch.bfloat16,
@@ -272,12 +276,27 @@ def process_json(model, processor, args, output):
         pope_dataset,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=2,
+        num_workers=4,
         drop_last=False,
     )
 
     total_samples = len(pope_dataset)
-    os.makedirs(os.path.dirname(output), exist_ok=True)
+    # Fix: Handle both directory and file paths
+    if output:
+        if os.path.isdir(output) or output.endswith('/'):
+            # If output is a directory, create the file inside it
+            os.makedirs(output, exist_ok=True)
+            base_dir = output
+            detail_file = os.path.join(output, f"POPE_type_{args.pope_type}_{args.method}_detailed.jsonl")
+        else:
+            # If output is a file path, use its directory
+            os.makedirs(os.path.dirname(output), exist_ok=True)
+            base_dir = os.path.dirname(output)
+            detail_file = output.replace(".jsonl", "_detailed.jsonl")
+    else:
+        base_dir = "outputs"
+        os.makedirs(base_dir, exist_ok=True)
+        detail_file = os.path.join(base_dir, f"POPE_type_{args.pope_type}_{args.method}_detailed.jsonl")
 
     pred_list, label_list = [], []
     detailed_results = []  # Store detailed predictions
@@ -287,8 +306,9 @@ def process_json(model, processor, args, output):
         responses = get_response(
             model, processor, args, data["image_path"], data["query"]
         )
-        for resp, label in zip(responses, data["label"]):
-            pred_list = recorder(resp, pred_list)
+        for resp, label, img_path, query in zip(responses, data["label"], data["image_path"], data["query"]):
+            pred = recorder(resp)
+            pred_list.append(pred)
             label_list.append(int(label))
 
         # Store detailed result
@@ -302,12 +322,11 @@ def process_json(model, processor, args, output):
             })
         if batch_id % 5 == 0:
             torch.cuda.empty_cache()
+            
     # Save detailed results
-    if output:
-        detail_file = output.replace(".jsonl", "_detailed.jsonl")
-        with open(detail_file, "w") as f:
-            for result in detailed_results:
-                f.write(json.dumps(result) + "\n")
+    with open(detail_file, "w") as f:
+        for result in detailed_results:
+            f.write(json.dumps(result) + "\n")
                 
     if len(pred_list) != 0:
         print_acc(pred_list, label_list, args, args.output)

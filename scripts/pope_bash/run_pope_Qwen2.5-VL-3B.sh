@@ -5,8 +5,8 @@ set -euo pipefail
 MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
-BATCH_SIZE=8
-MAX_TOKENS=10
+BATCH_SIZE=16
+MAX_TOKENS=8
 
 # Base output directory
 OUTPUT_DIR="./opera_log/pope_eval_results"
