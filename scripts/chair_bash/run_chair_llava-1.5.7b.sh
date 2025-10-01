@@ -12,7 +12,7 @@ MAX_TOKENS=64
 OUTPUT_DIR="./opera_log/chair_eval_results"
 
 # List of generation methods you want to run
-METHODS=("greedy" "beam")
+METHODS=("deco" )
 
 # ========= Run Loop =========
 for METHOD in "${METHODS[@]}"; do
