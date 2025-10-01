@@ -8,12 +8,11 @@ import re
 from transformers import (
     AutoProcessor,
     AutoModelForImageTextToText,
-    CLIPImageProcessor,
-)  # , AutoModelForVision2Seq,CLIPImageProcessor
+)  # , AutoModelForVision2Seq
 from qwen_vl_utils import process_vision_info
 import time
 from tqdm import tqdm
-from utils.logger_utils import print_run_header, print_run_summary
+from utils.logger_utils import print_run_chair_header, print_run_chair_summary
 from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
 
 np.random.seed(42)
@@ -31,7 +30,9 @@ def get_num_layers(model):
         return model.config.num_hidden_layers
 
     # 2. Gemma-3 style (nested inside text_config)
-    elif hasattr(model.config, "text_config") and hasattr(model.config.text_config, "num_hidden_layers"):
+    elif hasattr(model.config, "text_config") and hasattr(
+        model.config.text_config, "num_hidden_layers"
+    ):
         return model.config.text_config.num_hidden_layers
 
     # 3. Decoder layers (OPT, LLaMA, Gemma, etc.)
@@ -43,7 +44,15 @@ def get_num_layers(model):
         return len(model.encoder.layers)
 
     raise ValueError("Could not auto-detect number of layers for this model.")
-    
+
+
+def get_early_exit_layers(model, n):
+    num_layers = get_num_layers(model)
+    max_layer_index = num_layers  # last hidden state index = num_layers
+    early_exit_layers = list(range(max(1, num_layers - (n - 1)), max_layer_index + 1))
+    return early_exit_layers
+
+
 def load_model(model_id, args):
     """Load the model and processor."""
     min_pixels = 256 * 28 * 28
@@ -101,25 +110,21 @@ def get_response(model, processor, args, image_path, question):
             )
 
         elif args.method == "dola":
-            num_layers = get_num_layers(model)   
-            max_layer_index = num_layers   # last hidden state index = num_layers
-            dola_layers = list(range(max(1, num_layers - 9), max_layer_index + 1))
-            
+            early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
+
             generated_ids = model.generate(
                 **inputs,
                 max_new_tokens=args.max_tokens,
                 custom_generate="transformers-community/dola",
-                dola_layers=dola_layers,
+                dola_layers=early_exit_layers,
                 do_sample=False,
                 repetition_penalty=1.2,
                 trust_remote_code=True,
             )
         elif args.method == "deco":
             evolve_deco_greedy()
-            num_layers = get_num_layers(model)
-            max_layer_index = num_layers   # last hidden state index = num_layers
-            early_exit_layers = list(range(max(1, num_layers - 9), max_layer_index + 1))
-            
+            early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
+
             generated_ids = model.generate(
                 **inputs,
                 max_new_tokens=args.max_tokens,
@@ -221,7 +226,8 @@ def process_json(model, processor, args, output_json):
 
     print(error_id)
 
-    print_run_summary(start_time, total_samples, output_json)
+    # Print run summary
+    print_run_chair_summary(start_time, total_samples, output_json)
 
 
 if __name__ == "__main__":
@@ -251,6 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("--noise_step", type=int, default=500)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--max_tokens", type=int, default=64)
+    parser.add_argument("--early_exit_layers", type=int, default=10)
     args = parser.parse_args()
 
     # Auto-generate output path if not provided
@@ -261,7 +268,8 @@ if __name__ == "__main__":
 
         args.output = f"{base_dir}/responses.json"
 
-    print_run_header(args, args.output)
+    # Print run header
+    print_run_chair_header(args, args.output)
 
     model, processor = load_model(args.model_id, args)
 
