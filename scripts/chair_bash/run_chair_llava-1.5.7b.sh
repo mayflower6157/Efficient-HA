@@ -7,13 +7,14 @@ DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
 DEVICE="cuda:0"
 MAX_TOKENS=64
-EARLY_EXIT_LAYERS=5
+EARLY_EXIT_LAYERS=10
 
 # Base output directory
-OUTPUT_DIR="./opera_Log/chair_eval_results"
+OUTPUT_DIR="./opera_Log/chair_eval_results/"
 
 # List of generation methods you want to run
-METHODS=("dola" "deco" "greedy" "beam")
+#METHODS=("dola" "deco" "greedy" "beam")
+METHODS=("dola") 
 
 # ======== Run Loop ========
 for METHOD in "${METHODS[@]}"; do
