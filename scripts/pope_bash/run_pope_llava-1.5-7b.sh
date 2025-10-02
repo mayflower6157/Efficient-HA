@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ======== User Config ========
-MODEL_ID="google/gemma-3-4b-it"
+MODEL_ID="llava-hf/llava-1.5-7b-hf"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
 BATCH_SIZE=16
