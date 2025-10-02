@@ -24,9 +24,9 @@ for METHOD in "${METHODS[@]}"; do
 
     # Directory structure logic
     if [[ "$METHOD" == "dola" || "$METHOD" == "deco" ]]; then
-      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/"
+      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}"
     else
-      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/"
+      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}"
     fi
 
     RESP_FILE="${RESP_DIR}/pope_${POPE}_${METHOD}.jsonl"

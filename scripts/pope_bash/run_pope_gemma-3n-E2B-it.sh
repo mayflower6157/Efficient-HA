@@ -5,7 +5,7 @@ set -euo pipefail
 MODEL_ID="google/gemma-3n-E2B-it"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
-BATCH_SIZE=16
+BATCH_SIZE=8
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
 
@@ -13,7 +13,8 @@ EARLY_EXIT_LAYERS=10
 OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # List of generation methods you want to run
-METHODS=("beam" "greedy" "dola" "deco")
+#METHODS=("beam" "greedy" "dola" "deco")
+METHODS=("beam")
 
 # POPE types
 POPE_TYPES=("random" "popular" "adversarial")
@@ -24,9 +25,9 @@ for METHOD in "${METHODS[@]}"; do
 
     # Directory structure logic
     if [[ "$METHOD" == "dola" || "$METHOD" == "deco" ]]; then
-      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/"
+      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}"
     else
-      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/"
+      RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}"
     fi
 
     RESP_FILE="${RESP_DIR}/pope_${POPE}_${METHOD}.jsonl"
