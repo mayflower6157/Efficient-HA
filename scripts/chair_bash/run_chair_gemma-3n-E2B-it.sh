@@ -7,12 +7,13 @@ DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
 DEVICE="cuda:0"
 MAX_TOKENS=64
+EARLY_EXIT_LAYERS=5
 
 # Base output directory
-OUTPUT_DIR="./opera_log/chair_eval_results"
+OUTPUT_DIR="./opera_log/chair_eval_results/5_layers/"
 
 # List of generation methods you want to run
-METHODS=("deco")
+METHODS=("dola" "deco")
 
 # ========= Run Loop =========
 for METHOD in "${METHODS[@]}"; do
@@ -28,6 +29,7 @@ for METHOD in "${METHODS[@]}"; do
             --datapath "$DATA_PATH" \
             --device "$DEVICE" \
             --max_tokens "$MAX_TOKENS" \
+            --early_exit_layers "$EARLY_EXIT_LAYERS" \
             --output "$RESP_FILE"
         echo ">>> Finished generating responses"
     else

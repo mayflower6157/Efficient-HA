@@ -5,11 +5,12 @@ set -euo pipefail
 MODEL_ID="google/gemma-3n-E2B-it"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
-BATCH_SIZE=32
+BATCH_SIZE=8
 MAX_TOKENS=8
 
 # Base output directory
 OUTPUT_DIR="./opera_log/pope_eval_results"
+#OUTPUT_DIR="./test"
 
 # List of generation methods you want to run
 METHODS=("beam")
