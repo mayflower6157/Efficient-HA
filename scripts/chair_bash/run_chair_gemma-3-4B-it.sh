@@ -13,7 +13,8 @@ EARLY_EXIT_LAYERS=5
 OUTPUT_DIR="./opera_Log/chair_eval_results"
 
 # List of generation methods you want to run
-METHODS=("dola" "deco" "greedy" "beam")
+#METHODS=("dola" "deco" "greedy" "beam")
+METHODS=("dola" )
 
 # ======== Run Loop ========
 for METHOD in "${METHODS[@]}"; do
@@ -37,7 +38,8 @@ for METHOD in "${METHODS[@]}"; do
       --method "$METHOD" \
       --datapath "$DATA_PATH" \
       --device "$DEVICE" \
-      --max_tokens "$MAX_TOKENS"
+      --max_tokens "$MAX_TOKENS" \
+      --output "$RESP_FILE"
   fi
 
   # Step 2: Run CHAIR eval if not already present

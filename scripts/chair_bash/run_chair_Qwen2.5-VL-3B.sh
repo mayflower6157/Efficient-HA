@@ -37,7 +37,8 @@ for METHOD in "${METHODS[@]}"; do
       --method "$METHOD" \
       --datapath "$DATA_PATH" \
       --device "$DEVICE" \
-      --max_tokens "$MAX_TOKENS"
+      --max_tokens "$MAX_TOKENS" \
+      --output "$RESP_FILE"
   fi
 
   # Step 2: Run CHAIR eval if not already present
