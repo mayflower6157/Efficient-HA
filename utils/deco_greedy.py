@@ -9,6 +9,7 @@ from torch.nn import functional as F
 import torch
 from transformers.cache_utils import (Cache)
 import torch.distributed as dist
+from torch.nn.utils.rnn import pad_sequence
 from torch import nn
 import os
 from transformers.generation.logits_process import (
@@ -312,50 +313,163 @@ def deco_greedy_search(
   
         # Build last layer candidate tokens
         last_layer_tokens_logits = outputs.logits[:, -1, :]
-        last_layer_tokens_probs = nn.functional.softmax(last_layer_tokens_logits, dim=-1).squeeze(dim=0).squeeze(dim=0)
+        last_layer_tokens_probs = nn.functional.softmax(last_layer_tokens_logits, dim=-1)
         candidate_tokens_probs, candidate_tokens_ids = torch.topk(last_layer_tokens_probs, dim=-1, k=threshold_top_k)
+
+       
         
         # Top-P (nucleus sampling)
         
-        # Fixed code
-        candidate_tokens_ids, candidate_tokens_cutoff_idx = get_top_p_candidates(
+        '''
+        # Original code
+        candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
+        candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
+        candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
+        candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
+        '''
+        '''
+        candidate_tokens_ids, candidate_tokens_cutoff_idx = get_top_p_candidates_topk_original(
             candidate_tokens_probs,
+            candidate_tokens_ids,
             threshold_top_p=threshold_top_p,
             threshold_top_k=threshold_top_k
         )
-
-        # Original code
-        # candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
-        # candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
-        # candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
-        # candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
+        '''
         
-        # Early-exit logits
+         # Fixed code
+        candidate_tokens_ids, candidate_tokens_cutoff = get_top_p_candidates_topk_fixed(
+            candidate_tokens_probs,
+            candidate_tokens_ids,
+            threshold_top_p=threshold_top_p,
+            threshold_top_k=threshold_top_k
+        )
+        
+        # Normalize IDs → returns safe_ids + mask
+        candidate_tokens_ids, candidate_mask = normalize_candidate_tokens_ids(candidate_tokens_ids)
+        
+                
+        '''
+        # Early-exit logits Original
         stacked_early_exit_layers = torch.stack([logits_dict[i][:, -1, :] for i in early_exit_layers], dim=0)
         softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)
         candidate_tokens_early_exit_probs = softmax_early_exit_layers[:,:,candidate_tokens_ids].squeeze(dim=1) # [10 layers, 10 candidate tokens]
+        '''
 
+        # Early-exit logits
+        stacked_early_exit_layers = torch.stack(
+            [logits_dict[i][:, -1, :] for i in early_exit_layers], dim=0
+        )   # [num_layers, batch, vocab]
+        
+        softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)  
+        # shape: [num_layers, batch, vocab]
+        
+        # Expand candidate IDs for gather
+        # candidate_tokens_ids: [batch, top_k]
+        # Ensure candidate IDs are [batch, top_k]
+        candidate_tokens_ids = candidate_tokens_ids.view(candidate_tokens_ids.size(0), -1)
+        # Expand candidate IDs to match [num_layers, batch, top_k]
+        expanded_ids = candidate_tokens_ids.unsqueeze(0).expand(
+            softmax_early_exit_layers.size(0),  # num_layers
+            candidate_tokens_ids.size(0),       # batch
+            candidate_tokens_ids.size(1)        # top_k
+        )
+        
+        # Gather safely
+        candidate_tokens_early_exit_probs = torch.gather(
+            softmax_early_exit_layers, 
+            dim=-1, 
+            index=expanded_ids
+        )   # [num_layers, batch, top_k]
+
+        # Apply mask: set padded entries to -inf so they never influence max/selection
+        expanded_mask = candidate_mask.unsqueeze(0).expand_as(candidate_tokens_early_exit_probs)
+        candidate_tokens_early_exit_probs = candidate_tokens_early_exit_probs.masked_fill(~expanded_mask, float('-inf'))
+
+        ''' Original code
         max_candidate_tokens_idx = torch.argmax(candidate_tokens_early_exit_probs)
         premature_max_probs = candidate_tokens_early_exit_probs.max().item()
-        target_layers = max_candidate_tokens_idx // candidate_tokens_early_exit_probs.size(1) 
-            
-        selected_premature_layer_idx = early_exit_layers[target_layers.item()]
-        selected_premature_layer_logits = logits_dict[selected_premature_layer_idx][:, -1, :] # [1, vocab_size]
+        '''
+
+        # Instead of flattening with argmax, do it in two steps
+
+        # Pick the best layer (last dim)
+        layer_max_probs, _ = candidate_tokens_early_exit_probs.max(dim=-1)   # [num_layers, batch_size]
+        premature_max_probs, selected_premature_layer_idx = select_best_layers(
+            layer_max_probs,
+            early_exit_layers)
+        ''' Original Code
+        # target_layers = max_candidate_tokens_idx // candidate_tokens_early_exit_probs.size(1) 
+        # selected_premature_layer_idx = early_exit_layers[target_layers.item()]
+        # selected_premature_layer_logits = logits_dict[selected_premature_layer_idx][:, -1, :] # [1, vocab_size]
+        '''
+
+        # Fixed Code
+        # Example: stack logits from all selected layers
+        selected_premature_layer_logits = torch.stack(
+            [logits_dict[idx][:, -1, :] for idx in selected_premature_layer_idx],
+            dim=0
+        )  # shape: [num_selected_layers, batch, vocab_size]
+
+        # Log min/max/values for sanity
+        
+        ''' Original Code
         indices_to_remove = torch.ones_like(selected_premature_layer_logits)
         indices_to_remove[:, candidate_tokens_ids] = 0
         indices_to_remove = indices_to_remove.bool()
         next_token_logits = outputs.logits[:, -1, :]
         final_token_logits = next_token_logits + alpha * premature_max_probs * selected_premature_layer_logits
         final_token_logits = final_token_logits.masked_fill(indices_to_remove, -float("Inf"))
-
-
+        '''
+        
+        # Fixed code
+        final_token_logits = compute_final_logits(
+            outputs,
+            candidate_tokens_ids,
+            selected_premature_layer_logits,
+            premature_max_probs,
+            alpha,
+        )
+        next_token_logits = outputs.logits[:, -1, :]
+        # Optional: log stats
+        logger.debug(
+            f"[SAFEGUARD] final_token_logits: shape={final_token_logits.shape}, "
+            f"min={final_token_logits.min().item()}, max={final_token_logits.max().item()}, "
+            f"any_inf={torch.isinf(final_token_logits).any().item()}, "
+            f"any_nan={torch.isnan(final_token_logits).any().item()}"
+        )
+  
         # pre-process distribution
         next_token_scores = logits_processor(input_ids, next_token_logits)
 
         # pre-process distribution
         final_token_scores = logits_processor(input_ids, final_token_logits)
         # final_probs = nn.functional.softmax(final_token_scores, dim=-1)
-  
+
+        logger.info(f"final_token_scores shape: {final_token_scores.shape}")
+
+        if candidate_tokens_ids is not None:
+            # Log candidate IDs (detached and moved to CPU so they print nicely)
+            logger.info(
+                f"[DEBUG] candidate_tokens_ids: "
+                f"shape={candidate_tokens_ids.shape}, "
+                f"device={candidate_tokens_ids.device}, "
+                f"dtype={candidate_tokens_ids.dtype}, "
+                f"min={candidate_tokens_ids.min().item()}, "
+                f"max={candidate_tokens_ids.max().item()}"
+            )
+            logger.info(f"[DEBUG] candidate_tokens_ids values (first 50): {candidate_tokens_ids.detach().flatten().cpu()[:50].tolist()}")
+        
+            # Log final token scores
+            logger.info(
+                f"[DEBUG] final_token_scores: "
+                f"shape={final_token_scores.shape}, "
+                f"device={final_token_scores.device}, "
+                f"dtype={final_token_scores.dtype}, "
+                f"last_dim={final_token_scores.size(-1)}"
+            )
+            # Safety check before using it for gather
+            if candidate_tokens_ids.max() >= final_token_scores.size(-1):
+                raise ValueError("Invalid candidate ID: exceeds vocab size!")
 
         # synced_gpus: don't waste resources running the code we don't need; kwargs must be updated before skipping
         model_kwargs = self._update_model_kwargs_for_generation(
@@ -370,7 +484,7 @@ def deco_greedy_search(
         # (the clone itself is always small)
         next_token_logits = outputs.logits[:, -1, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
 
-        # pre-process distribution
+        # pre-process distributionfinal_token_scores
 
 
         # Store scores, attentions and hidden_states when required
@@ -393,13 +507,33 @@ def deco_greedy_search(
                     else (outputs.hidden_states,)
                 )
 
+        # Check tensor health
+        if torch.isnan(final_token_scores).any() or torch.isinf(final_token_scores).any():
+            # Move to CPU for safe inspection
+            final_scores_cpu = final_token_scores.detach().to("cpu")
+        
+            logger.error(
+                f"Invalid final_token_scores detected! "
+                f"shape={final_scores_cpu.shape}, dtype={final_scores_cpu.dtype}, "
+                f"min={final_scores_cpu.min().item()}, max={final_scores_cpu.max().item()}"
+            )
+        
+            # Optionally log a small sample of values
+            logger.error(
+                f"Sample values: {final_scores_cpu.flatten()[:50].tolist()}"
+            )
+            raise ValueError("Invalid final_token_scores detected")
+            
         # token selection
         if do_sample:
             probs = nn.functional.softmax(final_token_scores, dim=-1)
             # TODO (joao): this OP throws "skipping cudagraphs due to ['incompatible ops']", find solution
+            # ensure probs sums to ~1
+            logger.debug(f"probs sum per row: {probs.sum(dim=-1)}")
             next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
         else:
             next_tokens = torch.argmax(final_token_scores, dim=-1)
+        logger.info(f"next_tokens shape: {next_tokens.shape}, values: {next_tokens[:10]}")
 
         # finished sentences should have their next token be a padding token
         if has_eos_stopping_criteria:
@@ -646,82 +780,209 @@ def deco_greedy_search(
 #             return input_ids
 
 
-def get_top_p_candidates(candidate_tokens_probs, threshold_top_p, threshold_top_k):
+# --- Original full-vocab version ---
+def get_top_p_candidates_topk_original(candidate_tokens_probs, candidate_tokens_ids, threshold_top_p, threshold_top_k):
+    candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
+    if candidate_tokens_cumulative_probs.dim() == 2 and candidate_tokens_cumulative_probs.shape[0] == 1:
+        candidate_tokens_cumulative_probs = candidate_tokens_cumulative_probs.squeeze(0)
+        candidate_tokens_ids = candidate_tokens_ids.squeeze(0)
+    candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
+    candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
+    candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
+
+    return candidate_tokens_ids, candidate_tokens_cutoff_idx
+    
+# --- Refactored version with candidate_tokens_ids as input ---
+def get_top_p_candidates_topk_fixed(candidate_tokens_probs, candidate_tokens_ids, threshold_top_p, threshold_top_k):
     """
-    Apply Top-P (nucleus) and Top-K filtering to token probabilities.
+    Apply Top-P (nucleus) filtering to a set of candidate token IDs.
 
     Args:
-        candidate_tokens_probs: Tensor of shape [batch_size, vocab] or [vocab]
+        candidate_tokens_probs: Tensor of shape [batch_size, top_k] (probs of candidate IDs)
+        candidate_tokens_ids: Tensor of shape [batch_size, top_k] (token IDs from topk)
         threshold_top_p: float, cumulative probability threshold
         threshold_top_k: int, maximum number of tokens to keep
 
     Returns:
-        candidates: Tensor of filtered token indices
-        cutoffs: Tensor of cutoff indices for each batch
+        candidate_tokens_final: list of tensors of filtered token indices per batch
+        cutoffs: tensor of cutoff indices for each batch
     """
-    logger.debug(f"Input shape: {candidate_tokens_probs.shape}")
-    logger.debug(f"Thresholds - Top-P: {threshold_top_p}, Top-K: {threshold_top_k}")
-
-    # Handle both single and batch inputs
-    original_shape = candidate_tokens_probs.shape
     if candidate_tokens_probs.dim() == 1:
         candidate_tokens_probs = candidate_tokens_probs.unsqueeze(0)
-        logger.debug("Input was 1D, unsqueezed to 2D")
+        candidate_tokens_ids = candidate_tokens_ids.unsqueeze(0)
 
-    batch_size, vocab_size = candidate_tokens_probs.shape
-    logger.info(f"Processing batch_size={batch_size}, vocab_size={vocab_size}")
+    batch_size, top_k = candidate_tokens_probs.shape
 
-    # Sort probabilities in descending order
-    sorted_probs, sorted_indices = torch.sort(
-        candidate_tokens_probs, dim=-1, descending=True
-    )
-    logger.debug(
-        f"Sorted probabilities - top 5 per batch: {sorted_probs[:, :5].tolist()}"
-    )
+    # --- Step 1: Sort candidate probs + ids together ---
+    sorted_probs, sorted_indices = torch.sort(candidate_tokens_probs, dim=-1, descending=True)
+    sorted_ids = torch.gather(candidate_tokens_ids, -1, sorted_indices)
 
-    # Compute cumulative probabilities
+    # --- Step 2: Compute cumulative probabilities ---
     cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
-    logger.debug(f"Cumulative probs shape: {cumulative_probs.shape}")
 
-    # Find where cumulative prob exceeds threshold (vectorized)
-    cutoffs = (cumulative_probs <= threshold_top_p).sum(dim=-1) + 1
-    logger.debug(f"Initial cutoffs (Top-P): {cutoffs.tolist()}")
-
-    # Apply top-k constraint
-    cutoffs_before = cutoffs.clone()
+    # --- Step 3: Find cutoff idx via Top-P ---
+    threshold_top_p_tensor = torch.full(
+        (batch_size,), threshold_top_p,
+        device=cumulative_probs.device,
+        dtype=cumulative_probs.dtype
+    ).unsqueeze(-1)
+    cutoffs = torch.searchsorted(cumulative_probs, threshold_top_p_tensor, right=False) + 1
     cutoffs = torch.clamp(cutoffs, max=threshold_top_k)
 
-    # Log which batches were constrained by top-k
-    constrained = (cutoffs_before > threshold_top_k).sum().item()
-    if constrained > 0:
-        logger.info(f"{constrained}/{batch_size} batches constrained by Top-K limit")
-
-    logger.info(f"Final cutoffs: {cutoffs.tolist()}")
-
-    # Extract candidates
-    candidates = []
+    # --- Step 4: Slice candidates per batch ---
+    candidate_tokens_final = []
     for i in range(batch_size):
-        batch_candidates = sorted_indices[i, : cutoffs[i]]
-        candidates.append(batch_candidates)
-        logger.debug(
-            f"Batch {i}: selected {cutoffs[i].item()} tokens, "
-            f"token IDs: {batch_candidates.tolist()[:10]}..."
-        )  # Show first 10
+        candidate_tokens_final.append(sorted_ids[i, : cutoffs[i]])
 
-    # Calculate statistics
-    avg_candidates = cutoffs.float().mean().item()
-    logger.success(
-        f"Filtering complete - avg {avg_candidates:.1f} candidates per batch"
+    return candidate_tokens_final, cutoffs
+
+def compute_final_logits(
+    outputs,
+    candidate_tokens_ids,
+    selected_premature_layer_logits,
+    premature_max_probs,
+    alpha: float,
+):
+    """
+    Compute masked final logits for decoding.
+
+    Args:
+        outputs: model output with .logits [B, seq_len, V]
+        candidate_tokens_ids: tensor [B, K] candidate ids
+        selected_premature_layer_logits: tensor [L, B, V] or [B, V]
+        premature_max_probs: tensor [L, B] or [L, B, 1] or broadcastable
+        alpha: float scaling factor
+
+    Returns:
+        final_token_logits: [B, V] masked logits (finite values)
+    """
+
+    # --- Step 1: Get final-step logits
+    next_token_logits = outputs.logits[:, -1, :]                  # [B, V]
+    B, V = next_token_logits.shape
+
+    # --- Step 2: Aggregate premature-layer contribution to [B, V]
+    if selected_premature_layer_logits.dim() == 3:  # [L, B, V]
+        sp = selected_premature_layer_logits
+        p = premature_max_probs
+        if p.dim() == 2:                           # [L, B] -> [L, B, 1]
+            p = p.unsqueeze(-1)
+            
+        elif p.dim() == 1:                          # [L]
+            p = p.unsqueeze(1).unsqueeze(2) 
+        logger.debug("sp:", sp.shape, "p:", p.shape)
+        layer_boost = (p * sp).sum(dim=0)          # -> [B, V]
+    else:
+        layer_boost = selected_premature_layer_logits  # already [B, V]
+
+    # --- Step 3: Combine logits
+    final_token_logits = next_token_logits + alpha * layer_boost  # [B, V]
+
+    # --- Step 4: Mask out unwanted tokens
+    candidate_tokens_ids = candidate_tokens_ids.to(
+        device=final_token_logits.device, dtype=torch.long
+    ).clamp_(0, V - 1)
+
+    indices_to_remove = torch.ones(
+        (B, V), dtype=torch.bool, device=final_token_logits.device
+    )
+    indices_to_remove.scatter_(dim=1, index=candidate_tokens_ids, value=False)
+
+    # Safety: ensure at least one token is kept per row
+    all_masked = indices_to_remove.all(dim=1)
+    if all_masked.any():
+        top1 = final_token_logits.argmax(dim=1, keepdim=True)  # [B,1]
+        indices_to_remove[all_masked] = True
+        indices_to_remove.scatter_(1, top1[all_masked], False)
+
+    # --- Step 5: Apply mask with large finite negative (bf16 safe)
+    NEG_LARGE = torch.finfo(final_token_logits.dtype).min
+    final_token_logits = final_token_logits.masked_fill(indices_to_remove, NEG_LARGE)
+
+    return final_token_logits
+
+
+def select_best_layers(layer_max_probs, early_exit_layers):
+    """
+    Selects the best premature exit layers given the per-layer probabilities.
+    
+    Args:
+        layer_max_probs (torch.Tensor): [num_layers, batch_size]
+        early_exit_layers (list[int]): Original layer indices (e.g., [25..34])
+    
+    Returns:
+        premature_max_probs (torch.Tensor): [batch_size]
+        best_idx (torch.Tensor): [batch_size]
+    """
+
+    num_layers, batch_size = layer_max_probs.shape
+    logger.info(f"[select_best_layers] layer_max_probs.shape={layer_max_probs.shape}")
+
+    # Base is the first early_exit_layer (e.g., 25)
+    base = min(early_exit_layers)
+    mapped_layers = [i - base for i in early_exit_layers]
+
+    logger.debug(f"[select_best_layers] early_exit_layers={early_exit_layers}")
+    logger.debug(f"[select_best_layers] base={base}, mapped_layers={mapped_layers}")
+
+    # Safety check
+    if max(mapped_layers) >= num_layers:
+        raise IndexError(
+            f"After remapping, indices {mapped_layers} are out of range for "
+            f"layer_max_probs with {num_layers} rows"
+        )
+
+    # Restrict to early exit layers
+    restricted = layer_max_probs[mapped_layers, :]  # [len(E), B]
+    logger.debug(f"[select_best_layers] restricted.shape={restricted.shape}")
+
+    # Max over restricted layers per batch
+    premature_max_probs, best_idx = restricted.max(dim=0)  # [B], [B]
+
+    logger.debug(f"[select_best_layers] premature_max_probs.shape={premature_max_probs.shape}")
+    logger.debug(f"[select_best_layers] best_idx.shape={best_idx.shape}, device={best_idx.device}")
+
+    # Map best_idx (0..len(E)-1) back to original layer indices
+    selected_layers = [early_exit_layers[i.item()] for i in best_idx]
+    logger.info(f"[select_best_layers] selected premature layers={selected_layers}")
+
+    return premature_max_probs, selected_layers
+
+def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
+    # Log initial type
+    logger.info(f"[normalize] Input type={type(candidate_tokens_ids)}")
+
+    if isinstance(candidate_tokens_ids, list):
+        if all(x.shape == candidate_tokens_ids[0].shape for x in candidate_tokens_ids):
+            candidate_tokens_ids = torch.stack(candidate_tokens_ids, dim=0)
+        else:
+            candidate_tokens_ids = pad_sequence(
+                candidate_tokens_ids, batch_first=True, padding_value=pad_value
+            )
+
+    if isinstance(candidate_tokens_ids, torch.Tensor):
+        if candidate_tokens_ids.dim() == 1:
+            candidate_tokens_ids = candidate_tokens_ids.unsqueeze(0)
+        elif candidate_tokens_ids.dim() > 2:
+            candidate_tokens_ids = candidate_tokens_ids.view(candidate_tokens_ids.size(0), -1)
+
+    # Create mask (True = valid, False = padding)
+    mask = candidate_tokens_ids != pad_value
+
+    # Replace pad_value with 0 so gather won’t crash
+    safe_ids = candidate_tokens_ids.clone()
+    safe_ids[~mask] = 0
+
+    logger.info(
+        f"[normalize] After reshape: shape={safe_ids.shape}, "
+        f"device={safe_ids.device}, dtype={safe_ids.dtype}"
+    )
+    logger.debug(
+        f"[normalize] Values: {safe_ids.tolist()[:10]} "
+        f"(min={safe_ids.min().item()}, max={safe_ids.max().item()})"
     )
 
-    # If input was 1D, return 1D output
-    if len(original_shape) == 1:
-        logger.debug("Returning single batch result")
-        return candidates[0], cutoffs[0]
-
-    return candidates, cutoffs
-
-
+    return safe_ids, mask
 
 def normalize_hidden_state(h):
     """
