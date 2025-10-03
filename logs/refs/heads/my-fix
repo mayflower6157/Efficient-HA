@@ -1,0 +1,29 @@
+bed94ad4f0d4ef4e8045f51b299a02c4c0c0c51e ac461090c4e63c32421d5d4864ae6ccefae4623b mayflower6157 <kexu6157@gmail.com> 1758974402 +0000	commit: Update environment.yml
+ac461090c4e63c32421d5d4864ae6ccefae4623b aef45c9913644255ed8c4814aa1f6bb7bddec623 mayflower6157 <kexu6157@gmail.com> 1758974776 +0000	commit: Update README
+aef45c9913644255ed8c4814aa1f6bb7bddec623 aebaad1f956fffdbc27d2861281cd4cc5c0761d0 mayflower6157 <kexu6157@gmail.com> 1758974982 +0000	commit: update
+aebaad1f956fffdbc27d2861281cd4cc5c0761d0 15cc85b36f2e32eea11b65b6843b3c0f7292aeb6 mayflower6157 <kexu6157@gmail.com> 1758980732 +0000	commit: add eval outputs
+15cc85b36f2e32eea11b65b6843b3c0f7292aeb6 fefa0bd679cfd60a43d6ae94bd8fcd3111002229 mayflower6157 <kexu6157@gmail.com> 1759119867 +0000	pull: Fast-forward
+fefa0bd679cfd60a43d6ae94bd8fcd3111002229 8aba7027d718e1fc94e5627ae6e873d5422e6e86 mayflower6157 <kexu6157@gmail.com> 1759132337 +0000	commit: add response for gemma-3-4b and gemma-3n-E2B
+8aba7027d718e1fc94e5627ae6e873d5422e6e86 295f730755903666266f3064c5e4299cadd27b31 mayflower6157 <kexu6157@gmail.com> 1759146878 +0000	pull: Fast-forward
+295f730755903666266f3064c5e4299cadd27b31 ab3f42b8ba5b99a4b120e4d645de5d94018cae7b mayflower6157 <kexu6157@gmail.com> 1759151725 +0000	commit: add response for gemma-3n-E2B
+ab3f42b8ba5b99a4b120e4d645de5d94018cae7b 69a0bc3e647b94656160c16a24cd5ea3dc964775 mayflower6157 <kexu6157@gmail.com> 1759164322 +0000	commit: add response for gemma-3n-E4B
+69a0bc3e647b94656160c16a24cd5ea3dc964775 859dd2466f8e02ee698abe22a25eac393208a5c7 mayflower6157 <kexu6157@gmail.com> 1759165321 +0000	commit: add metric for qwen and gemma models
+859dd2466f8e02ee698abe22a25eac393208a5c7 d75723ed94537e911297a089f3611d44e453f956 mayflower6157 <kexu6157@gmail.com> 1759214840 +0000	commit: update
+d75723ed94537e911297a089f3611d44e453f956 97eff539b0c046ca439fbc06b58c3810686e5d43 mayflower6157 <kexu6157@gmail.com> 1759215009 +0000	commit (merge): update
+97eff539b0c046ca439fbc06b58c3810686e5d43 bd72137d87c084137ae2506647133fcc1a1a0290 mayflower6157 <kexu6157@gmail.com> 1759219245 +0000	commit: remove old scripts and add new results
+bd72137d87c084137ae2506647133fcc1a1a0290 2fbd37f9c17bbfe7cfb43fc710a9eea0b948994c mayflower6157 <kexu6157@gmail.com> 1759223654 +0000	commit: update beam results
+2fbd37f9c17bbfe7cfb43fc710a9eea0b948994c 7fec1b36061573fc026720a9337e575f8fbf1a52 mayflower6157 <kexu6157@gmail.com> 1759224290 +0000	commit: remove old scripts and add new results
+7fec1b36061573fc026720a9337e575f8fbf1a52 87128f74e01dc2b45ef30de0e0aba2ddf2a54cde mayflower6157 <kexu6157@gmail.com> 1759239359 +0000	commit: update utils for deco
+87128f74e01dc2b45ef30de0e0aba2ddf2a54cde e1c5a7454fffa987ab1fccf70f834893999de5b6 mayflower6157 <kexu6157@gmail.com> 1759245095 +0000	commit: remove old responses and add new results
+e1c5a7454fffa987ab1fccf70f834893999de5b6 85295a2f7e467ff4fe94ed036eec5ea6ce9aa6cd mayflower6157 <kexu6157@gmail.com> 1759251357 +0000	commit: add deco results
+85295a2f7e467ff4fe94ed036eec5ea6ce9aa6cd 14dd55d1f79ae984f82b2059789e7da72a7a75eb mayflower6157 <kexu6157@gmail.com> 1759253077 +0000	commit: remove old scripts and add new results
+14dd55d1f79ae984f82b2059789e7da72a7a75eb d64fa325196dab35fc5be597a8ed47c1a4def116 mayflower6157 <kexu6157@gmail.com> 1759253548 +0000	commit: add pope
+d64fa325196dab35fc5be597a8ed47c1a4def116 760a7301fad91f1c028ffff370d6337075b4bab6 mayflower6157 <kexu6157@gmail.com> 1759298405 +0000	commit: update run script and results
+760a7301fad91f1c028ffff370d6337075b4bab6 75c55ad2b9b7715c8ebcc6dc2b23f600024baf43 mayflower6157 <kexu6157@gmail.com> 1759303776 +0000	pull: Fast-forward
+75c55ad2b9b7715c8ebcc6dc2b23f600024baf43 3b9be7cf634669e96290dbadec00e67215ed14bf mayflower6157 <kexu6157@gmail.com> 1759308466 +0000	commit: update run script and results
+3b9be7cf634669e96290dbadec00e67215ed14bf a7ed2083009b235a0f7b05fc09562dd763dd25de mayflower6157 <kexu6157@gmail.com> 1759311277 +0000	commit: update run script and results
+a7ed2083009b235a0f7b05fc09562dd763dd25de 3a1f1735da31e96e1b40f3fff7c5cdba3dc550c4 mayflower6157 <kexu6157@gmail.com> 1759342031 +0000	commit: update run script and results
+3a1f1735da31e96e1b40f3fff7c5cdba3dc550c4 cae14505958442aabc794793ac9a939a03895b43 mayflower6157 <kexu6157@gmail.com> 1759380808 +0000	commit: update run script and results
+cae14505958442aabc794793ac9a939a03895b43 c108cdae02bb431f657e226f7bb4586d4da77ec4 mayflower6157 <kexu6157@gmail.com> 1759386311 +0000	commit: update run script and results
+c108cdae02bb431f657e226f7bb4586d4da77ec4 d37b8db41fd54e6679af5898881cebfd1b1d81da mayflower6157 <kexu6157@gmail.com> 1759475455 +0000	pull: Fast-forward
+d37b8db41fd54e6679af5898881cebfd1b1d81da 78ddf35379aa25e40a9744c650863fb64a9f6010 mayflower6157 <kexu6157@gmail.com> 1759479148 +0000	commit: update run script and results
