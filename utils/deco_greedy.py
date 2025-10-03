@@ -1,6 +1,8 @@
 import copy
 import inspect
 import warnings
+from loguru import logger
+logger.remove()
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 from torch.nn import functional as F
@@ -24,7 +26,7 @@ from transformers.generation.configuration_utils import (
     GenerationConfig,
 
 )
-logger = logging.get_logger(__name__)
+logger_greedy = logging.get_logger(__name__)
 @dataclass
 class GreedySearchDecoderOnlyOutput(ModelOutput):
     """
@@ -266,7 +268,7 @@ def deco_greedy_search(
         if self.config._attn_implementation == "flash_attention_2":
             # only raise warning if the user passed an explicit compile-config
             if generation_config.compile_config is not None and generation_config.compile_config.fullgraph:
-                logger.warning_once(
+                logger_greedy.warning_once(
                     "When using Flash Attention 2 and a static cache, you cannot use the option `CompileConfig(fullgraph=True)` as "
                     "FA2 introduces graph breaks. We overrode the option with `fullgraph=False`."
                 )
@@ -314,10 +316,19 @@ def deco_greedy_search(
         candidate_tokens_probs, candidate_tokens_ids = torch.topk(last_layer_tokens_probs, dim=-1, k=threshold_top_k)
         
         # Top-P (nucleus sampling)
-        candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
-        candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
-        candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
-        candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
+        
+        # Fixed code
+        candidate_tokens_ids, candidate_tokens_cutoff_idx = get_top_p_candidates(
+            candidate_tokens_probs,
+            threshold_top_p=threshold_top_p,
+            threshold_top_k=threshold_top_k
+        )
+
+        # Original code
+        # candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
+        # candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
+        # candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
+        # candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
         
         # Early-exit logits
         stacked_early_exit_layers = torch.stack([logits_dict[i][:, -1, :] for i in early_exit_layers], dim=0)
@@ -633,6 +644,84 @@ def deco_greedy_search(
 #                 )
 #         else:
 #             return input_ids
+
+
+def get_top_p_candidates(candidate_tokens_probs, threshold_top_p, threshold_top_k):
+    """
+    Apply Top-P (nucleus) and Top-K filtering to token probabilities.
+
+    Args:
+        candidate_tokens_probs: Tensor of shape [batch_size, vocab] or [vocab]
+        threshold_top_p: float, cumulative probability threshold
+        threshold_top_k: int, maximum number of tokens to keep
+
+    Returns:
+        candidates: Tensor of filtered token indices
+        cutoffs: Tensor of cutoff indices for each batch
+    """
+    logger.debug(f"Input shape: {candidate_tokens_probs.shape}")
+    logger.debug(f"Thresholds - Top-P: {threshold_top_p}, Top-K: {threshold_top_k}")
+
+    # Handle both single and batch inputs
+    original_shape = candidate_tokens_probs.shape
+    if candidate_tokens_probs.dim() == 1:
+        candidate_tokens_probs = candidate_tokens_probs.unsqueeze(0)
+        logger.debug("Input was 1D, unsqueezed to 2D")
+
+    batch_size, vocab_size = candidate_tokens_probs.shape
+    logger.info(f"Processing batch_size={batch_size}, vocab_size={vocab_size}")
+
+    # Sort probabilities in descending order
+    sorted_probs, sorted_indices = torch.sort(
+        candidate_tokens_probs, dim=-1, descending=True
+    )
+    logger.debug(
+        f"Sorted probabilities - top 5 per batch: {sorted_probs[:, :5].tolist()}"
+    )
+
+    # Compute cumulative probabilities
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+    logger.debug(f"Cumulative probs shape: {cumulative_probs.shape}")
+
+    # Find where cumulative prob exceeds threshold (vectorized)
+    cutoffs = (cumulative_probs <= threshold_top_p).sum(dim=-1) + 1
+    logger.debug(f"Initial cutoffs (Top-P): {cutoffs.tolist()}")
+
+    # Apply top-k constraint
+    cutoffs_before = cutoffs.clone()
+    cutoffs = torch.clamp(cutoffs, max=threshold_top_k)
+
+    # Log which batches were constrained by top-k
+    constrained = (cutoffs_before > threshold_top_k).sum().item()
+    if constrained > 0:
+        logger.info(f"{constrained}/{batch_size} batches constrained by Top-K limit")
+
+    logger.info(f"Final cutoffs: {cutoffs.tolist()}")
+
+    # Extract candidates
+    candidates = []
+    for i in range(batch_size):
+        batch_candidates = sorted_indices[i, : cutoffs[i]]
+        candidates.append(batch_candidates)
+        logger.debug(
+            f"Batch {i}: selected {cutoffs[i].item()} tokens, "
+            f"token IDs: {batch_candidates.tolist()[:10]}..."
+        )  # Show first 10
+
+    # Calculate statistics
+    avg_candidates = cutoffs.float().mean().item()
+    logger.success(
+        f"Filtering complete - avg {avg_candidates:.1f} candidates per batch"
+    )
+
+    # If input was 1D, return 1D output
+    if len(original_shape) == 1:
+        logger.debug("Returning single batch result")
+        return candidates[0], cutoffs[0]
+
+    return candidates, cutoffs
+
+
 
 def normalize_hidden_state(h):
     """

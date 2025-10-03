@@ -5,7 +5,7 @@ set -euo pipefail
 MODEL_ID="google/gemma-3-4b-it"
 DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
-BATCH_SIZE=16
+BATCH_SIZE=1
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
 
@@ -13,7 +13,8 @@ EARLY_EXIT_LAYERS=10
 OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # List of generation methods you want to run
-METHODS=("beam" "greedy" "dola" "deco")
+#METHODS=("beam" "greedy" "dola" "deco")
+METHODS=("deco")
 
 # POPE types
 POPE_TYPES=("random" "popular" "adversarial")
