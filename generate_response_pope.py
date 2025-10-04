@@ -67,48 +67,58 @@ def get_early_exit_layers(model, n):
 
 
 def print_acc(pred_list, label_list, args, base_dir):
-    # Ensure directory exists
+    """
+    Compute and print POPE metrics, and save them as JSONL files.
+    Compatible with the existing evaluation structure.
+    """
     os.makedirs(base_dir, exist_ok=True)
 
-    # Confusion matrix
+    # === Compute metrics ===
     cm = confusion_matrix(label_list, pred_list, labels=[1, 0])
     TP, FP, FN, TN = cm.ravel() if cm.size == 4 else (0, 0, 0, 0)
 
-    # Accuracy
     acc = accuracy_score(label_list, pred_list)
-
-    # Classification report (precision, recall, f1)
-    report = classification_report(
+    report_dict = classification_report(label_list, pred_list, output_dict=True)
+    report_text = classification_report(
         label_list, pred_list, target_names=["Negative", "Positive"], digits=4
     )
 
+    # === Print metrics to console ===
+    print("\n==================== POPE Evaluation ====================")
+    print(f"POPE Type: {args.pope_type} | Method: {args.method}")
+    print("----------------------------------------------------------")
     print("Confusion Matrix (labels: [Positive=1, Negative=0])")
     print(cm)
     print("\nClassification Report:")
-    print(report)
+    print(report_text)
     print(f"Accuracy: {acc:.4f}")
+    print("==========================================================")
 
-    # Save metrics
-    with open(
-        os.path.join(base_dir, f"POPE_type_{args.Pope_type}_{args.method}.jsonl"), "a"
-    ) as f:
+    # === Save metrics to JSONL ===
+    metric_path = os.path.join(
+        base_dir, f"POPE_type_{args.pope_type}_{args.method}_metric.jsonl"
+    )
+
+    with open(metric_path, "a") as f:
         json.dump(
             {
+                "POPE_Type": args.pope_type,
+                "Method": args.method,
                 "ConfusionMatrix": cm.tolist(),
                 "Accuracy": acc,
-                "Report": classification_report(
-                    label_list, pred_list, output_dict=True
-                ),
+                "Report": report_dict,
             },
             f,
+            indent=2,
         )
         f.write("\n")
 
+    print(f"✅ Metrics appended to: {metric_path}\n")
+
 
 def recorder(out):
-    """Return prediction instead of modifying list in-place."""
     text = out.lower()
-    if "n't" in text or any(f" {w} " in f" {text} " for w in ["no", "not"]):
+    if re.search(r"\b(?:no|not|n't)\b", text):
         return 0
     else:
         return 1

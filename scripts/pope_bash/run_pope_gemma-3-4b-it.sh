@@ -48,6 +48,9 @@ for METHOD in "${METHODS[@]}"; do
         --max_tokens "$MAX_TOKENS" \
         --output "$RESP_DIR"
       echo ">>> Finished generating responses"
+    # 🔽 Force GPU memory to release before next run
+    sleep 5
+    nvidia-smi --gpu-reset -i 0 >/dev/null 2>&1 || true
     else
       echo ">>> Skipping: ${RESP_FILE} already exists"
     fi

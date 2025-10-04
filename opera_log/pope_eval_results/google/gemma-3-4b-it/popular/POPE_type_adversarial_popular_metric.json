@@ -1,0 +1,28 @@
+{
+  "ConfusionMatrix": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "Accuracy": NaN,
+  "Report": {
+    "accuracy": 0.0,
+    "macro avg": {
+      "precision": NaN,
+      "recall": NaN,
+      "f1-score": NaN,
+      "support": 0.0
+    },
+    "weighted avg": {
+      "precision": NaN,
+      "recall": NaN,
+      "f1-score": NaN,
+      "support": 0.0
+    }
+  }
+}
