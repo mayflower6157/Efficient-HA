@@ -1,4 +1,4 @@
-!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # ======== User Config ========
@@ -14,7 +14,7 @@ OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # List of generation methods you want to run
 #METHODS=("beam" "greedy" "dola" "deco")
-METHODS=("deco")
+METHODS=("dola")
 
 # POPE types
 POPE_TYPES=("random" "popular" "adversarial")
