@@ -30,7 +30,7 @@ for METHOD in "${METHODS[@]}"; do
       RESP_DIR="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}"
     fi
 
-    RESP_FILE="${RESP_DIR}/pope_${POPE}_${METHOD}.jsonl"
+    RESP_FILE="${RESP_DIR}/POPE_type_${POPE}_${METHOD}.jsonl"
 
     # Make sure directories exist
     mkdir -p "$RESP_DIR"
@@ -46,7 +46,7 @@ for METHOD in "${METHODS[@]}"; do
         --datapath "$DATA_PATH" \
         --device "$DEVICE" \
         --max_tokens "$MAX_TOKENS" \
-        --output "$RESP_FILE"
+        --output "$RESP_DIR"
       echo ">>> Finished generating responses"
     else
       echo ">>> Skipping: ${RESP_FILE} already exists"
