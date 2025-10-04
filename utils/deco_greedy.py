@@ -2,12 +2,13 @@ import copy
 import inspect
 import warnings
 from loguru import logger
+
 logger.remove()
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 from torch.nn import functional as F
 import torch
-from transformers.cache_utils import (Cache)
+from transformers.cache_utils import Cache
 import torch.distributed as dist
 from torch.nn.utils.rnn import pad_sequence
 from torch import nn
@@ -21,13 +22,23 @@ from transformers.generation.stopping_criteria import (
     validate_stopping_criteria,
 )
 import transformers
-from transformers.generation.utils import ModelOutput,logging
+from transformers.generation.utils import ModelOutput, logging
 from transformers.generation.configuration_utils import (
-
     GenerationConfig,
-
 )
+
 logger_greedy = logging.get_logger(__name__)
+
+
+class SafeLogitsProcessorList(LogitsProcessorList):
+    def __call__(self, input_ids, scores):
+        if scores.dtype == torch.bfloat16:
+            scores = scores.to(torch.float32)
+        scores = super().__call__(input_ids, scores)
+        scores = torch.nan_to_num(scores, nan=-1e4, neginf=-1e4)
+        return scores.to(torch.bfloat16)
+
+
 @dataclass
 class GreedySearchDecoderOnlyOutput(ModelOutput):
     """
@@ -183,8 +194,12 @@ class GenerateEncoderDecoderOutput(ModelOutput):
     past_key_values: Optional[tuple[tuple[tuple[torch.FloatTensor]]]] = None
 
 
-GreedySearchOutput = Union[GreedySearchEncoderDecoderOutput, GreedySearchDecoderOnlyOutput]
+GreedySearchOutput = Union[
+    GreedySearchEncoderDecoderOutput, GreedySearchDecoderOnlyOutput
+]
 GenerateNonBeamOutput = Union[GenerateDecoderOnlyOutput, GenerateEncoderDecoderOutput]
+
+
 def deco_greedy_search(
     self,
     input_ids: torch.LongTensor,
@@ -228,38 +243,53 @@ def deco_greedy_search(
         `model.config.is_encoder_decoder=True`.
     """
     # init values
+    # Usage fixed code
+    logits_processor = SafeLogitsProcessorList(logits_processor)
     pad_token_id = generation_config._pad_token_tensor
     output_attentions = generation_config.output_attentions
     output_hidden_states = generation_config.output_hidden_states
     output_scores = generation_config.output_scores
     output_logits = generation_config.output_logits
     return_dict_in_generate = generation_config.return_dict_in_generate
-    has_eos_stopping_criteria = any(hasattr(criteria, "eos_token_id") for criteria in stopping_criteria)
+    has_eos_stopping_criteria = any(
+        hasattr(criteria, "eos_token_id") for criteria in stopping_criteria
+    )
     do_sample = generation_config.do_sample
-    alpha=generation_config.alpha
-    threshold_top_p= generation_config.threshold_top_p
-    threshold_top_k= generation_config.threshold_top_k
-    early_exit_layers= generation_config.early_exit_layers
+    alpha = generation_config.alpha
+    threshold_top_p = generation_config.threshold_top_p
+    threshold_top_k = generation_config.threshold_top_k
+    early_exit_layers = generation_config.early_exit_layers
     # init attention / hidden states / scores tuples
     scores = () if (return_dict_in_generate and output_scores) else None
     raw_logits = () if (return_dict_in_generate and output_logits) else None
     decoder_attentions = () if (return_dict_in_generate and output_attentions) else None
     cross_attentions = () if (return_dict_in_generate and output_attentions) else None
-    decoder_hidden_states = () if (return_dict_in_generate and output_hidden_states) else None
+    decoder_hidden_states = (
+        () if (return_dict_in_generate and output_hidden_states) else None
+    )
 
     # if model is an encoder-decoder, retrieve encoder attention weights and hidden states
     if return_dict_in_generate and self.config.is_encoder_decoder:
-        encoder_attentions = model_kwargs["encoder_outputs"].get("attentions") if output_attentions else None
+        encoder_attentions = (
+            model_kwargs["encoder_outputs"].get("attentions")
+            if output_attentions
+            else None
+        )
         encoder_hidden_states = (
-            model_kwargs["encoder_outputs"].get("hidden_states") if output_hidden_states else None
+            model_kwargs["encoder_outputs"].get("hidden_states")
+            if output_hidden_states
+            else None
         )
 
     # keep track of which sequences are already finished
     batch_size, cur_len = input_ids.shape[:2]
     this_peer_finished = False
-    unfinished_sequences = torch.ones(batch_size, dtype=torch.long, device=input_ids.device)
-    model_kwargs = self._get_initial_cache_position(cur_len, input_ids.device, model_kwargs)
-
+    unfinished_sequences = torch.ones(
+        batch_size, dtype=torch.long, device=input_ids.device
+    )
+    model_kwargs = self._get_initial_cache_position(
+        cur_len, input_ids.device, model_kwargs
+    )
 
     model_forward = self.__call__
     compile_forward = self._valid_auto_compile_criteria(model_kwargs, generation_config)
@@ -268,7 +298,10 @@ def deco_greedy_search(
         # If we use FA2 and a static cache, we cannot compile with fullgraph
         if self.config._attn_implementation == "flash_attention_2":
             # only raise warning if the user passed an explicit compile-config
-            if generation_config.compile_config is not None and generation_config.compile_config.fullgraph:
+            if (
+                generation_config.compile_config is not None
+                and generation_config.compile_config.fullgraph
+            ):
                 logger_greedy.warning_once(
                     "When using Flash Attention 2 and a static cache, you cannot use the option `CompileConfig(fullgraph=True)` as "
                     "FA2 introduces graph breaks. We overrode the option with `fullgraph=False`."
@@ -277,150 +310,169 @@ def deco_greedy_search(
         model_forward = self.get_compiled_call(generation_config.compile_config)
 
     if generation_config.prefill_chunk_size is not None:
-        model_kwargs = self._prefill_chunking(input_ids, generation_config, **model_kwargs)
+        model_kwargs = self._prefill_chunking(
+            input_ids, generation_config, **model_kwargs
+        )
         is_prefill = False
     else:
         is_prefill = True
     lm_head = self.get_output_embeddings()
     if lm_head is None:
-        lm_head=self.lm_head
+        lm_head = self.lm_head
     if lm_head is None:
         raise ValueError("not supported for models that don't have output embeddings.")
-    while self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device):
+    while self._has_unfinished_sequences(
+        this_peer_finished, synced_gpus, device=input_ids.device
+    ):
         # prepare model inputs
         model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
         # prepare variable output controls (note: some models won't accept all output controls)
-        model_inputs.update({"output_attentions": output_attentions} if output_attentions else {})
-        model_inputs.update({"output_hidden_states": output_hidden_states} if output_hidden_states else {})
+        model_inputs.update(
+            {"output_attentions": output_attentions} if output_attentions else {}
+        )
+        model_inputs.update(
+            {"output_hidden_states": output_hidden_states}
+            if output_hidden_states
+            else {}
+        )
 
         if is_prefill:
             outputs = self(**model_inputs, return_dict=True)
-            is_prefill = False      
+            is_prefill = False
         else:
             outputs = model_forward(**model_inputs, return_dict=True)
         logits_dict = {}
 
-        
         for _, early_exit_layer in enumerate(early_exit_layers):
-            like_final_outputs = normalize_hidden_state(outputs.hidden_states[early_exit_layer])
+            like_final_outputs = normalize_hidden_state(
+                outputs.hidden_states[early_exit_layer]
+            )
             logits = lm_head(like_final_outputs)
             logits_dict[early_exit_layer] = logits
 
         final_hidden = normalize_hidden_state(outputs.hidden_states[-1])
         final_logits = lm_head(final_hidden)
         logits_dict[len(outputs.hidden_states)] = final_logits
-  
+
         # Build last layer candidate tokens
         last_layer_tokens_logits = outputs.logits[:, -1, :]
-        last_layer_tokens_probs = nn.functional.softmax(last_layer_tokens_logits, dim=-1)
-        candidate_tokens_probs, candidate_tokens_ids = torch.topk(last_layer_tokens_probs, dim=-1, k=threshold_top_k)
+        last_layer_tokens_probs = nn.functional.softmax(
+            last_layer_tokens_logits, dim=-1
+        )
+        candidate_tokens_probs, candidate_tokens_ids = torch.topk(
+            last_layer_tokens_probs, dim=-1, k=threshold_top_k
+        )
 
-       
-        
         # Top-P (nucleus sampling)
-        
-        '''
+
+        """
         # Original code
         candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
         candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
         candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
         candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
-        '''
-        '''
+        """
+        """
         candidate_tokens_ids, candidate_tokens_cutoff_idx = get_top_p_candidates_topk_original(
             candidate_tokens_probs,
             candidate_tokens_ids,
             threshold_top_p=threshold_top_p,
             threshold_top_k=threshold_top_k
         )
-        '''
-        
-         # Fixed code
+        """
+
+        # Fixed code
         candidate_tokens_ids, candidate_tokens_cutoff = get_top_p_candidates_topk_fixed(
             candidate_tokens_probs,
             candidate_tokens_ids,
             threshold_top_p=threshold_top_p,
-            threshold_top_k=threshold_top_k
+            threshold_top_k=threshold_top_k,
         )
-        
+
         # Normalize IDs → returns safe_ids + mask
-        candidate_tokens_ids, candidate_mask = normalize_candidate_tokens_ids(candidate_tokens_ids)
-        
-                
-        '''
+        candidate_tokens_ids, candidate_mask = normalize_candidate_tokens_ids(
+            candidate_tokens_ids
+        )
+
+        """
         # Early-exit logits Original
         stacked_early_exit_layers = torch.stack([logits_dict[i][:, -1, :] for i in early_exit_layers], dim=0)
         softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)
         candidate_tokens_early_exit_probs = softmax_early_exit_layers[:,:,candidate_tokens_ids].squeeze(dim=1) # [10 layers, 10 candidate tokens]
-        '''
+        """
 
         # Early-exit logits
         stacked_early_exit_layers = torch.stack(
             [logits_dict[i][:, -1, :] for i in early_exit_layers], dim=0
-        )   # [num_layers, batch, vocab]
-        
-        softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)  
+        )  # [num_layers, batch, vocab]
+
+        softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)
         # shape: [num_layers, batch, vocab]
-        
+
         # Expand candidate IDs for gather
         # candidate_tokens_ids: [batch, top_k]
         # Ensure candidate IDs are [batch, top_k]
-        candidate_tokens_ids = candidate_tokens_ids.view(candidate_tokens_ids.size(0), -1)
+        candidate_tokens_ids = candidate_tokens_ids.view(
+            candidate_tokens_ids.size(0), -1
+        )
         # Expand candidate IDs to match [num_layers, batch, top_k]
         expanded_ids = candidate_tokens_ids.unsqueeze(0).expand(
             softmax_early_exit_layers.size(0),  # num_layers
-            candidate_tokens_ids.size(0),       # batch
-            candidate_tokens_ids.size(1)        # top_k
+            candidate_tokens_ids.size(0),  # batch
+            candidate_tokens_ids.size(1),  # top_k
         )
-        
+
         # Gather safely
         candidate_tokens_early_exit_probs = torch.gather(
-            softmax_early_exit_layers, 
-            dim=-1, 
-            index=expanded_ids
-        )   # [num_layers, batch, top_k]
+            softmax_early_exit_layers, dim=-1, index=expanded_ids
+        )  # [num_layers, batch, top_k]
 
         # Apply mask: set padded entries to -inf so they never influence max/selection
-        expanded_mask = candidate_mask.unsqueeze(0).expand_as(candidate_tokens_early_exit_probs)
-        candidate_tokens_early_exit_probs = candidate_tokens_early_exit_probs.masked_fill(~expanded_mask, float('-inf'))
+        expanded_mask = candidate_mask.unsqueeze(0).expand_as(
+            candidate_tokens_early_exit_probs
+        )
+        candidate_tokens_early_exit_probs = (
+            candidate_tokens_early_exit_probs.masked_fill(~expanded_mask, float("-inf"))
+        )
 
-        ''' Original code
+        """ Original code
         max_candidate_tokens_idx = torch.argmax(candidate_tokens_early_exit_probs)
         premature_max_probs = candidate_tokens_early_exit_probs.max().item()
-        '''
+        """
 
         # Instead of flattening with argmax, do it in two steps
 
         # Pick the best layer (last dim)
-        layer_max_probs, _ = candidate_tokens_early_exit_probs.max(dim=-1)   # [num_layers, batch_size]
+        layer_max_probs, _ = candidate_tokens_early_exit_probs.max(
+            dim=-1
+        )  # [num_layers, batch_size]
         premature_max_probs, selected_premature_layer_idx = select_best_layers(
-            layer_max_probs,
-            early_exit_layers)
-        ''' Original Code
+            layer_max_probs, early_exit_layers
+        )
+        """ Original Code
         # target_layers = max_candidate_tokens_idx // candidate_tokens_early_exit_probs.size(1) 
         # selected_premature_layer_idx = early_exit_layers[target_layers.item()]
         # selected_premature_layer_logits = logits_dict[selected_premature_layer_idx][:, -1, :] # [1, vocab_size]
-        '''
+        """
 
         # Fixed Code
         # Example: stack logits from all selected layers
         selected_premature_layer_logits = torch.stack(
-            [logits_dict[idx][:, -1, :] for idx in selected_premature_layer_idx],
-            dim=0
+            [logits_dict[idx][:, -1, :] for idx in selected_premature_layer_idx], dim=0
         )  # shape: [num_selected_layers, batch, vocab_size]
 
         # Log min/max/values for sanity
-        
-        ''' Original Code
+
+        """ Original Code
         indices_to_remove = torch.ones_like(selected_premature_layer_logits)
         indices_to_remove[:, candidate_tokens_ids] = 0
         indices_to_remove = indices_to_remove.bool()
         next_token_logits = outputs.logits[:, -1, :]
         final_token_logits = next_token_logits + alpha * premature_max_probs * selected_premature_layer_logits
         final_token_logits = final_token_logits.masked_fill(indices_to_remove, -float("Inf"))
-        '''
-        
+        """
+
         # Fixed code
         final_token_logits = compute_final_logits(
             outputs,
@@ -437,13 +489,42 @@ def deco_greedy_search(
             f"any_inf={torch.isinf(final_token_logits).any().item()}, "
             f"any_nan={torch.isnan(final_token_logits).any().item()}"
         )
-  
+
         # pre-process distribution
+        # Check health
+        check_tensor_health("next_token_logits", next_token_logits)
         next_token_scores = logits_processor(input_ids, next_token_logits)
 
         # pre-process distribution
+        # Check health
+        check_tensor_health("final_token_logits", final_token_logits)
+        logger.info(f"[CHECK] Pre-processor logits summary:")
+        logger.info(
+            f"  shape={final_token_logits.shape}, "
+            f"min={final_token_logits.min().item():.4f}, "
+            f"max={final_token_logits.max().item():.4f}, "
+            f"any_nan={torch.isnan(final_token_logits).any().item()}, "
+            f"any_inf={torch.isinf(final_token_logits).any().item()}"
+        )
         final_token_scores = logits_processor(input_ids, final_token_logits)
         # final_probs = nn.functional.softmax(final_token_scores, dim=-1)
+        # Post-operation sanity check
+        logger.info(f"[CHECK] Post-processor scores summary:")
+        logger.info(
+            f"  shape={final_token_scores.shape}, "
+            f"min={final_token_scores.min().item():.4f}, "
+            f"max={final_token_scores.max().item():.4f}, "
+            f"any_nan={torch.isnan(final_token_scores).any().item()}, "
+            f"any_inf={torch.isinf(final_token_scores).any().item()}"
+        )
+
+        # If invalid, log sample values for debugging
+        if (
+            torch.isnan(final_token_scores).any()
+            or torch.isinf(final_token_scores).any()
+        ):
+            sample_vals = final_token_scores.flatten()[:30].tolist()
+            logger.error(f"[DETECT] Invalid final_token_scores! Sample: {sample_vals}")
 
         logger.info(f"final_token_scores shape: {final_token_scores.shape}")
 
@@ -457,8 +538,10 @@ def deco_greedy_search(
                 f"min={candidate_tokens_ids.min().item()}, "
                 f"max={candidate_tokens_ids.max().item()}"
             )
-            logger.info(f"[DEBUG] candidate_tokens_ids values (first 50): {candidate_tokens_ids.detach().flatten().cpu()[:50].tolist()}")
-        
+            logger.info(
+                f"[DEBUG] candidate_tokens_ids values (first 50): {candidate_tokens_ids.detach().flatten().cpu()[:50].tolist()}"
+            )
+
             # Log final token scores
             logger.info(
                 f"[DEBUG] final_token_scores: "
@@ -482,10 +565,11 @@ def deco_greedy_search(
 
         # Copy is needed to avoid keeping a hanging ref to outputs.logits which may be very large for first iteration
         # (the clone itself is always small)
-        next_token_logits = outputs.logits[:, -1, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
+        next_token_logits = outputs.logits[:, -1, :].to(
+            copy=True, dtype=torch.float32, device=input_ids.device
+        )
 
         # pre-process distributionfinal_token_scores
-
 
         # Store scores, attentions and hidden_states when required
         if return_dict_in_generate:
@@ -495,7 +579,9 @@ def deco_greedy_search(
                 raw_logits += (next_token_logits,)
             if output_attentions:
                 decoder_attentions += (
-                    (outputs.decoder_attentions,) if self.config.is_encoder_decoder else (outputs.attentions,)
+                    (outputs.decoder_attentions,)
+                    if self.config.is_encoder_decoder
+                    else (outputs.attentions,)
                 )
                 if self.config.is_encoder_decoder:
                     cross_attentions += (outputs.cross_attentions,)
@@ -507,23 +593,9 @@ def deco_greedy_search(
                     else (outputs.hidden_states,)
                 )
 
-        # Check tensor health
-        if torch.isnan(final_token_scores).any() or torch.isinf(final_token_scores).any():
-            # Move to CPU for safe inspection
-            final_scores_cpu = final_token_scores.detach().to("cpu")
-        
-            logger.error(
-                f"Invalid final_token_scores detected! "
-                f"shape={final_scores_cpu.shape}, dtype={final_scores_cpu.dtype}, "
-                f"min={final_scores_cpu.min().item()}, max={final_scores_cpu.max().item()}"
-            )
-        
-            # Optionally log a small sample of values
-            logger.error(
-                f"Sample values: {final_scores_cpu.flatten()[:50].tolist()}"
-            )
-            raise ValueError("Invalid final_token_scores detected")
-            
+            # Check health
+            check_tensor_health("final_token_scores", final_token_scores)
+
         # token selection
         if do_sample:
             probs = nn.functional.softmax(final_token_scores, dim=-1)
@@ -533,18 +605,24 @@ def deco_greedy_search(
             next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
         else:
             next_tokens = torch.argmax(final_token_scores, dim=-1)
-        logger.info(f"next_tokens shape: {next_tokens.shape}, values: {next_tokens[:10]}")
+        logger.info(
+            f"next_tokens shape: {next_tokens.shape}, values: {next_tokens[:10]}"
+        )
 
         # finished sentences should have their next token be a padding token
         if has_eos_stopping_criteria:
-            next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+            next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
+                1 - unfinished_sequences
+            )
 
         # update generated ids, model inputs, and length for next step
         input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
         if streamer is not None:
             streamer.put(next_tokens.cpu())
 
-        unfinished_sequences = unfinished_sequences & ~stopping_criteria(input_ids, scores)
+        unfinished_sequences = unfinished_sequences & ~stopping_criteria(
+            input_ids, scores
+        )
         this_peer_finished = unfinished_sequences.max() == 0
         cur_len += 1
 
@@ -580,6 +658,7 @@ def deco_greedy_search(
     else:
         return input_ids
 
+
 # def deco_greedy_search(
 #         self,
 #         input_ids: torch.LongTensor,
@@ -600,7 +679,7 @@ def deco_greedy_search(
 #         streamer: Optional["BaseStreamer"] = None,
 #         **model_kwargs,
 #     ) -> Union[GreedySearchOutput, torch.LongTensor]:
-               
+
 #         # init values
 #         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
 #         stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
@@ -677,16 +756,16 @@ def deco_greedy_search(
 #             candidate_tokens_probs, candidate_tokens_ids = torch.topk(last_layer_tokens_probs, dim=-1, k=threshold_top_k)
 #             candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
 #             candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
-#             candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
+#             candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))
 #             candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
-                
+
 #             stacked_early_exit_layers = torch.stack([dict_outputs[i][:, -1, :] for i in early_exit_layers], dim=0)
 #             softmax_early_exit_layers = F.softmax(stacked_early_exit_layers, dim=-1)
 #             candidate_tokens_early_exit_probs = softmax_early_exit_layers[:,:,candidate_tokens_ids].squeeze(dim=1) # [10 layers, 10 candidate tokens]
 #             max_candidate_tokens_idx = torch.argmax(candidate_tokens_early_exit_probs)
 #             premature_max_probs = candidate_tokens_early_exit_probs.max().item()
-#             target_layers = max_candidate_tokens_idx // candidate_tokens_early_exit_probs.size(1) 
-                
+#             target_layers = max_candidate_tokens_idx // candidate_tokens_early_exit_probs.size(1)
+
 #             selected_premature_layer_idx = early_exit_layers[target_layers.item()]
 #             selected_premature_layer_logits = dict_outputs[selected_premature_layer_idx][:, -1, :] # [1, vocab_size]
 #             indices_to_remove = torch.ones_like(selected_premature_layer_logits)
@@ -704,7 +783,7 @@ def deco_greedy_search(
 #             final_token_scores = logits_processor(input_ids, final_token_logits)
 #             # final_probs = nn.functional.softmax(final_token_scores, dim=-1)
 #             next_tokens = torch.argmax(final_token_scores, dim=-1)
-            
+
 #             # Store scores, attentions and hidden_states when required
 #             if return_dict_in_generate:
 #                 if output_scores:
@@ -722,7 +801,7 @@ def deco_greedy_search(
 #                         if self.config.is_encoder_decoder
 #                         else (outputs.hidden_states,)
 #                     )
-                    
+
 #             # finished sentences should have their next token be a padding token
 #             if eos_token_id is not None:
 #                 if pad_token_id is None:
@@ -753,8 +832,8 @@ def deco_greedy_search(
 
 #             if this_peer_finished and not synced_gpus:
 #                 break
-        
-        
+
+
 #         if streamer is not None:
 #             streamer.end()
 
@@ -781,19 +860,31 @@ def deco_greedy_search(
 
 
 # --- Original full-vocab version ---
-def get_top_p_candidates_topk_original(candidate_tokens_probs, candidate_tokens_ids, threshold_top_p, threshold_top_k):
+def get_top_p_candidates_topk_original(
+    candidate_tokens_probs, candidate_tokens_ids, threshold_top_p, threshold_top_k
+):
     candidate_tokens_cumulative_probs = candidate_tokens_probs.cumsum(dim=-1)
-    if candidate_tokens_cumulative_probs.dim() == 2 and candidate_tokens_cumulative_probs.shape[0] == 1:
+    if (
+        candidate_tokens_cumulative_probs.dim() == 2
+        and candidate_tokens_cumulative_probs.shape[0] == 1
+    ):
         candidate_tokens_cumulative_probs = candidate_tokens_cumulative_probs.squeeze(0)
         candidate_tokens_ids = candidate_tokens_ids.squeeze(0)
-    candidate_tokens_indices = torch.searchsorted(candidate_tokens_cumulative_probs, threshold_top_p, right=False)
-    candidate_tokens_cutoff_idx = torch.min(candidate_tokens_indices + 1, torch.tensor(threshold_top_k))    
+    candidate_tokens_indices = torch.searchsorted(
+        candidate_tokens_cumulative_probs, threshold_top_p, right=False
+    )
+    candidate_tokens_cutoff_idx = torch.min(
+        candidate_tokens_indices + 1, torch.tensor(threshold_top_k)
+    )
     candidate_tokens_ids = candidate_tokens_ids[:candidate_tokens_cutoff_idx]
 
     return candidate_tokens_ids, candidate_tokens_cutoff_idx
-    
+
+
 # --- Refactored version with candidate_tokens_ids as input ---
-def get_top_p_candidates_topk_fixed(candidate_tokens_probs, candidate_tokens_ids, threshold_top_p, threshold_top_k):
+def get_top_p_candidates_topk_fixed(
+    candidate_tokens_probs, candidate_tokens_ids, threshold_top_p, threshold_top_k
+):
     """
     Apply Top-P (nucleus) filtering to a set of candidate token IDs.
 
@@ -814,7 +905,9 @@ def get_top_p_candidates_topk_fixed(candidate_tokens_probs, candidate_tokens_ids
     batch_size, top_k = candidate_tokens_probs.shape
 
     # --- Step 1: Sort candidate probs + ids together ---
-    sorted_probs, sorted_indices = torch.sort(candidate_tokens_probs, dim=-1, descending=True)
+    sorted_probs, sorted_indices = torch.sort(
+        candidate_tokens_probs, dim=-1, descending=True
+    )
     sorted_ids = torch.gather(candidate_tokens_ids, -1, sorted_indices)
 
     # --- Step 2: Compute cumulative probabilities ---
@@ -822,11 +915,14 @@ def get_top_p_candidates_topk_fixed(candidate_tokens_probs, candidate_tokens_ids
 
     # --- Step 3: Find cutoff idx via Top-P ---
     threshold_top_p_tensor = torch.full(
-        (batch_size,), threshold_top_p,
+        (batch_size,),
+        threshold_top_p,
         device=cumulative_probs.device,
-        dtype=cumulative_probs.dtype
+        dtype=cumulative_probs.dtype,
     ).unsqueeze(-1)
-    cutoffs = torch.searchsorted(cumulative_probs, threshold_top_p_tensor, right=False) + 1
+    cutoffs = (
+        torch.searchsorted(cumulative_probs, threshold_top_p_tensor, right=False) + 1
+    )
     cutoffs = torch.clamp(cutoffs, max=threshold_top_k)
 
     # --- Step 4: Slice candidates per batch ---
@@ -835,6 +931,7 @@ def get_top_p_candidates_topk_fixed(candidate_tokens_probs, candidate_tokens_ids
         candidate_tokens_final.append(sorted_ids[i, : cutoffs[i]])
 
     return candidate_tokens_final, cutoffs
+
 
 def compute_final_logits(
     outputs,
@@ -858,20 +955,20 @@ def compute_final_logits(
     """
 
     # --- Step 1: Get final-step logits
-    next_token_logits = outputs.logits[:, -1, :]                  # [B, V]
+    next_token_logits = outputs.logits[:, -1, :]  # [B, V]
     B, V = next_token_logits.shape
 
     # --- Step 2: Aggregate premature-layer contribution to [B, V]
     if selected_premature_layer_logits.dim() == 3:  # [L, B, V]
         sp = selected_premature_layer_logits
         p = premature_max_probs
-        if p.dim() == 2:                           # [L, B] -> [L, B, 1]
+        if p.dim() == 2:  # [L, B] -> [L, B, 1]
             p = p.unsqueeze(-1)
-            
-        elif p.dim() == 1:                          # [L]
-            p = p.unsqueeze(1).unsqueeze(2) 
+
+        elif p.dim() == 1:  # [L]
+            p = p.unsqueeze(1).unsqueeze(2)
         logger.debug("sp:", sp.shape, "p:", p.shape)
-        layer_boost = (p * sp).sum(dim=0)          # -> [B, V]
+        layer_boost = (p * sp).sum(dim=0)  # -> [B, V]
     else:
         layer_boost = selected_premature_layer_logits  # already [B, V]
 
@@ -905,11 +1002,11 @@ def compute_final_logits(
 def select_best_layers(layer_max_probs, early_exit_layers):
     """
     Selects the best premature exit layers given the per-layer probabilities.
-    
+
     Args:
         layer_max_probs (torch.Tensor): [num_layers, batch_size]
         early_exit_layers (list[int]): Original layer indices (e.g., [25..34])
-    
+
     Returns:
         premature_max_probs (torch.Tensor): [batch_size]
         best_idx (torch.Tensor): [batch_size]
@@ -939,14 +1036,19 @@ def select_best_layers(layer_max_probs, early_exit_layers):
     # Max over restricted layers per batch
     premature_max_probs, best_idx = restricted.max(dim=0)  # [B], [B]
 
-    logger.debug(f"[select_best_layers] premature_max_probs.shape={premature_max_probs.shape}")
-    logger.debug(f"[select_best_layers] best_idx.shape={best_idx.shape}, device={best_idx.device}")
+    logger.debug(
+        f"[select_best_layers] premature_max_probs.shape={premature_max_probs.shape}"
+    )
+    logger.debug(
+        f"[select_best_layers] best_idx.shape={best_idx.shape}, device={best_idx.device}"
+    )
 
     # Map best_idx (0..len(E)-1) back to original layer indices
     selected_layers = [early_exit_layers[i.item()] for i in best_idx]
     logger.info(f"[select_best_layers] selected premature layers={selected_layers}")
 
     return premature_max_probs, selected_layers
+
 
 def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
     # Log initial type
@@ -964,7 +1066,9 @@ def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
         if candidate_tokens_ids.dim() == 1:
             candidate_tokens_ids = candidate_tokens_ids.unsqueeze(0)
         elif candidate_tokens_ids.dim() > 2:
-            candidate_tokens_ids = candidate_tokens_ids.view(candidate_tokens_ids.size(0), -1)
+            candidate_tokens_ids = candidate_tokens_ids.view(
+                candidate_tokens_ids.size(0), -1
+            )
 
     # Create mask (True = valid, False = padding)
     mask = candidate_tokens_ids != pad_value
@@ -984,6 +1088,7 @@ def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
 
     return safe_ids, mask
 
+
 def normalize_hidden_state(h):
     """
     Normalize a single hidden_state tensor.
@@ -996,7 +1101,16 @@ def normalize_hidden_state(h):
         # Example: [4, 1, 275, 2048] -> [1, 275, 2048]
         h = h.mean(dim=0)
     return h
-    
+
+
+def check_tensor_health(name, tensor):
+    if torch.isnan(tensor).any() or torch.isinf(tensor).any():
+        logger.error(
+            f"{name} has invalid values! "
+            f"min={tensor.min().item()}, max={tensor.max().item()}"
+        )
+        raise ValueError(f"{name} contains NaN or Inf.")
+
 
 def evolve_deco_greedy():
 
