@@ -1092,7 +1092,7 @@ def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
 def normalize_hidden_state(h):
     """
     Normalize a single hidden_state tensor.
-    - If shape is [B, 1, S, H], average across batch -> [1, S, H]
+    - If shape is [PT, B, S, H], average across batch -> [B, S, H]
     - Otherwise return as is
     """
     if isinstance(h, tuple):  # in case it's wrapped
