@@ -1,91 +1,69 @@
-import gc
-import os
-import argparse
-import json
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Enhanced COCO Caption Evaluation Runner
+---------------------------------------
+Author: Leo (Ke Xu)
+Purpose: Unified DECO/VCD/Greedy/Beam inference pipeline with fault-tolerant logging.
+"""
+
+import os, gc, json, time, traceback, argparse, re, sys
+from pathlib import Path
+from typing import Any, Dict, List
 import numpy as np
 import torch
-import re
-from transformers import (
-    AutoProcessor,
-    AutoModelForImageTextToText,
-)  # , AutoModelForVision2Seq
-from qwen_vl_utils import process_vision_info
-import time
 from tqdm import tqdm
-from utils.logger_utils import print_run_chair_header, print_run_chair_summary
-from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
-
-np.random.seed(42)
-torch.manual_seed(42)
-torch.cuda.manual_seed_all(42)
 from PIL import Image, ImageOps
+from transformers import AutoProcessor, AutoModelForImageTextToText
+from qwen_vl_utils import process_vision_info
+from loguru import logger
+
+# === Utilities ===
+from utils.logger_utils import (
+    print_run_chair_header,
+    print_run_chair_summary,
+    setup_logger,
+)
 from utils.vcd_add_noise import add_diffusion_noise
+from utils.deco_greedy import evolve_deco_greedy, get_early_exit_layers
 from utils.vcd_sample import evolve_vcd_sampling
-from utils.deco_greedy import evolve_deco_greedy
 
 
-def get_num_layers(model):
-    # 1. Direct field (LLaMA/Qwen style)
-    if hasattr(model.config, "num_hidden_layers"):
-        return model.config.num_hidden_layers
-
-    # 2. Gemma-3 style (nested inside text_config)
-    elif hasattr(model.config, "text_config") and hasattr(
-        model.config.text_config, "num_hidden_layers"
-    ):
-        return model.config.text_config.num_hidden_layers
-
-    # 3. Decoder layers (OPT, LLaMA, Gemma, etc.)
-    elif hasattr(model, "model") and hasattr(model.model, "layers"):
-        return len(model.model.layers)
-
-    # 4. Encoder layers (T5, BART)
-    elif hasattr(model, "encoder") and hasattr(model.encoder, "layers"):
-        return len(model.encoder.layers)
-
-    raise ValueError("Could not auto-detect number of layers for this model.")
-
-
-def get_early_exit_layers(model, n):
-    num_layers = get_num_layers(model)
-    max_layer_index = num_layers  # last hidden state index = num_layers
-    early_exit_layers = list(range(max(1, num_layers - (n - 1)), max_layer_index + 1))
-    return early_exit_layers
-
-
-def load_model(model_id, args):
-    """Load the model and processor."""
-    min_pixels = 256 * 28 * 28
-    max_pixels = 512 * 28 * 28
+# ============================================
+# 🧩 1. Model Loader
+# ============================================
+def load_model(model_id: str, device: str):
+    """Load model + processor with preset resolution caps."""
+    min_pixels, max_pixels = 256 * 28 * 28, 512 * 28 * 28
     processor = AutoProcessor.from_pretrained(
         model_id, trust_remote_code=True, min_pixels=min_pixels, max_pixels=max_pixels
     )
-
     model = AutoModelForImageTextToText.from_pretrained(
         model_id,
-        dtype=torch.bfloat16,
-        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,
+        device_map=device,
         attn_implementation="flash_attention_2",
-        device_map=args.device,
-    )
-
-    model.eval()
+        trust_remote_code=True,
+    ).eval()
+    logger.success(f"Model {model_id} loaded on {device}")
     return model, processor
 
 
-def get_response(model, processor, args, image_path, question):
-    # For Qwen
+# ============================================
+# 🧩 2. Generation Dispatch
+# ============================================
+def generate_response(model, processor, args, image_path, question: str):
+    """Generate caption response using the specified method."""
     messages = [
         {
             "role": "user",
             "content": [
                 {"type": "image", "image": image_path},
-                {"type": "text", "text": (question)},
+                {"type": "text", "text": question},
             ],
         }
     ]
 
-    # Prepare inputs
     text = processor.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
@@ -96,181 +74,154 @@ def get_response(model, processor, args, image_path, question):
         videos=video_inputs,
         padding=True,
         return_tensors="pt",
-    )
-    inputs = inputs.to(model.device)
+    ).to(model.device)
 
     with torch.no_grad():
-        if args.method == "greedy":
-            generated_ids = model.generate(
-                **inputs, max_new_tokens=args.max_tokens, do_sample=False
+        method = args.method.lower()
+        if method == "greedy":
+            gen_kwargs = dict(max_new_tokens=args.max_tokens, do_sample=False)
+        elif method == "beam":
+            gen_kwargs = dict(max_new_tokens=args.max_tokens, num_beams=5)
+        elif method == "dola":
+            args.early_exit_layers = get_early_exit_layers(
+                model, args.early_exit_layers
             )
-        elif args.method == "beam":
-            generated_ids = model.generate(
-                **inputs, max_new_tokens=args.max_tokens, num_beams=5
-            )
-
-        elif args.method == "dola":
-            early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
-
-            generated_ids = model.generate(
-                **inputs,
+            gen_kwargs = dict(
                 max_new_tokens=args.max_tokens,
                 custom_generate="transformers-community/dola",
-                dola_layers=early_exit_layers,
-                do_sample=False,
+                dola_layers=args.early_exit_layers,
                 repetition_penalty=1.2,
-                trust_remote_code=True,
             )
-        elif args.method == "deco":
-            evolve_deco_greedy()
-            early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
-
-            generated_ids = model.generate(
-                **inputs,
+        elif method == "deco":
+            evolve_deco_greedy(model, args)
+            gen_kwargs = dict(
                 max_new_tokens=args.max_tokens,
-                top_p=None,
-                top_k=None,
                 do_sample=False,
-                alpha=0.6,
-                threshold_top_p=0.9,
-                threshold_top_k=20,
-                early_exit_layers=early_exit_layers,
-                return_dict_in_generate=True,
                 output_hidden_states=True,
+                return_dict_in_generate=True,
             )
-
-            generated_ids = generated_ids.sequences
-
-        elif args.method == "vcd":
+        elif method == "vcd":
             evolve_vcd_sampling()
-
             inputs_cd = inputs.copy()
             inputs_cd["pixel_values"] = add_diffusion_noise(
                 inputs["pixel_values"], args.noise_step
             )
-
-            generated_ids = model.generate(
-                **inputs,
+            gen_kwargs = dict(
                 max_new_tokens=args.max_tokens,
-                pixel_values_cd=(inputs_cd["pixel_values"].unsqueeze(0).half().cuda()),
+                do_sample=True,
+                pixel_values_cd=inputs_cd["pixel_values"].unsqueeze(0).half().cuda(),
                 cd_alpha=args.cd_alpha,
                 cd_beta=args.cd_beta,
-                do_sample=True,
             )
         else:
-            raise ValueError(f"Unknown generation method: {args.method}")
-        generated_ids_trimmed = [
-            out_ids[len(in_ids) :]
-            for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = processor.batch_decode(
-            generated_ids_trimmed,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
-        )[0]
+            raise ValueError(f"❌ Unknown generation method: {args.method}")
 
-    return output_text
+        logger.debug(f"Generating with method: {method}")
+        outputs = model.generate(**inputs, **gen_kwargs)
+        if hasattr(outputs, "sequences"):
+            outputs = outputs.sequences
+
+        # Decode output text
+        trimmed = [out[len(inp) :] for inp, out in zip(inputs.input_ids, outputs)]
+        text_out = processor.batch_decode(trimmed, skip_special_tokens=True)[0]
+        return text_out.strip()
 
 
-def process_json(model, processor, args, output_json):
-    image_ids = []
-    with open(
-        "/home/mayflower/Efficient-HA/opera_log/llava-1.5/greedy.jsonl",
-        "r",
-        encoding="utf-8",
-    ) as f:
-        for line in f.readlines():
-            json_data = json.loads(line)
-            json_data.pop("caption")
-            image_ids.append(json_data)
+# ============================================
+# 🧩 3. JSON Processing Loop
+# ============================================
+def process_json(model, processor, args, output_json, save_every=20):
+    input_jsonl = Path("/home/mayflower/Efficient-HA/opera_log/llava-1.5/greedy.jsonl")
+    with open(input_jsonl, "r", encoding="utf-8") as f:
+        samples = [json.loads(line) for line in f]
+        for s in samples:
+            s.pop("caption", None)
+    total = len(samples)
+    logger.info(f"Loaded {total} samples.")
 
-    total_samples = len(image_ids)
-    os.makedirs(os.path.dirname(output_json), exist_ok=True)
+    processed = []
+    if os.path.exists(output_json):
+        with open(output_json, "r") as f:
+            processed = json.load(f)
+    done_ids = {item["image_id"] for item in processed}
+    buffer, errors = [], []
+    logger.info(f"Resuming from {len(done_ids)} completed samples.")
 
-    if not os.path.exists(output_json):
-        with open(output_json, "w") as f:
-            json.dump([], f)
-    with open(output_json, "r") as f:
+    q = "Describe this image in detail."
+    start = time.time()
 
-        current_data = json.load(f)
-    processed_idx = [item["image_id"] for item in current_data]
-
-    question = "Describe this image in detail."
-
-    error_id = []
-
-    start_time = time.time()
-
-    for idx, line in enumerate(
-        tqdm(image_ids, total=total_samples, desc="Processing", unit="img")
+    for i, entry in enumerate(
+        tqdm(samples, total=total, desc="Processing", unit="img")
     ):
-        if idx in processed_idx:
+        img_id = entry["image_id"]
+        if img_id in done_ids:
             continue
 
-        image_path = "COCO_val2014_" + str(line["image_id"]).zfill(12) + ".jpg"
-        image_path = os.path.join(args.datapath, image_path)
+        image_path = os.path.join(args.datapath, f"COCO_val2014_{img_id:012d}.jpg")
 
-        response = get_response(model, processor, args, image_path, question)
-        torch.cuda.empty_cache()
+        try:
+            entry["response"] = generate_response(model, processor, args, image_path, q)
+            buffer.append(entry)
+            torch.cuda.empty_cache()
+        except torch.cuda.OutOfMemoryError:
+            logger.warning(f"OOM at {img_id}, clearing cache...")
+            torch.cuda.empty_cache()
+            gc.collect()
+            continue
+        except Exception as e:
+            traceback.print_exc()
+            logger.error(f"⚠️ Failed {img_id}: {e}")
+            errors.append(img_id)
 
-        line["response"] = response
+        if len(buffer) >= save_every:
+            _safe_write_json(output_json, processed + buffer)
+            processed += buffer
+            buffer.clear()
 
-        # tqdm handles ETA + progress bar, so no manual print needed
-        with open(output_json, "r") as f:
-            current_data = json.load(f)
+    if buffer:
+        _safe_write_json(output_json, processed + buffer)
 
-        current_data.append(line)
-
-        with open(output_json, "w") as f:
-            json.dump(current_data, f, indent=2)
-
-    print(error_id)
-
-    # Print run summary
-    print_run_chair_summary(start_time, total_samples, output_json)
+    print_run_chair_summary(start, total, output_json)
+    logger.success(f"✅ Completed {len(processed)} / {total}. Errors: {len(errors)}")
 
 
+def _safe_write_json(path, data):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+# ============================================
+# 🧩 4. Entry Point
+# ============================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model_id", default="Qwen/Qwen2.5-VL-3B-Instruct")
     parser.add_argument(
-        "--output",
-        type=str,
-        default=None,
-        help="Output file to store model responses (auto-set if not provided)",
+        "--datapath", default="/mnt/disks/extra-disk/datasets/coco2014/val2014"
     )
-    parser.add_argument(
-        "--model_id",
-        type=str,
-        default="Qwen/Qwen2.5-VL-3B-Instruct",
-        help="Path to the model",
-    )
-
-    parser.add_argument(
-        "--datapath",
-        type=str,
-        default="/mnt/disks/extra-disk/datasets/coco2014/val2014",
-        help="Path to the data",
-    )
-    parser.add_argument("--method", type=str, default="greedy")
-    parser.add_argument("--cd_alpha", type=float, default=1)
-    parser.add_argument("--cd_beta", type=float, default=0.1)
-    parser.add_argument("--noise_step", type=int, default=500)
-    parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--method", default="greedy")
+    parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--output", default=None)
     parser.add_argument("--max_tokens", type=int, default=64)
     parser.add_argument("--early_exit_layers", type=int, default=10)
+    parser.add_argument("--cd_alpha", type=float, default=1.0)
+    parser.add_argument("--cd_beta", type=float, default=0.1)
+    parser.add_argument("--noise_step", type=int, default=500)
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--silent", action="store_true")
     args = parser.parse_args()
 
-    # Auto-generate output path if not provided
-    if args.output is None:
-        repo_owner, model_name = args.model_id.split("/")
-        base_dir = f"./opera_log/{repo_owner}/{model_name}/{args.method}"
-        os.makedirs(base_dir, exist_ok=True)
+    # Setup logging and output dirs
+    setup_logger(debug=args.debug, silent=args.silent)
+    repo_owner, model_name = args.model_id.split("/")
+    args.output = (
+        args.output
+        or f"./opera_log/{repo_owner}/{model_name}/{args.method}/responses.json"
+    )
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
 
-        args.output = f"{base_dir}/responses.json"
-
-    # Print run header
     print_run_chair_header(args, args.output)
-
-    model, processor = load_model(args.model_id, args)
-
+    model, processor = load_model(args.model_id, args.device)
     process_json(model, processor, args, args.output)

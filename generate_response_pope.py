@@ -15,13 +15,17 @@ from qwen_vl_utils import process_vision_info
 import time
 from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
 
-
+# === Utilities ===
+from utils.logger_utils import (
+    print_run_pope_header,
+    print_run_pope_summary,
+    setup_logger,
+)
 from PIL import Image, ImageOps
 from tqdm import tqdm
 from utils.vcd_add_noise import add_diffusion_noise
 from utils.vcd_sample import evolve_vcd_sampling
 from utils.deco_greedy import evolve_deco_greedy
-from utils.logger_utils import print_run_pope_header, print_run_pope_summary
 from pope_loader import POPEDataSet
 
 POPE_PATH = {
@@ -428,9 +432,13 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--max_tokens", type=int, default=8)
     parser.add_argument("--early_exit_layers", type=int, default=10)
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--silent", action="store_true")
     args = parser.parse_args()
     args = validate_args(args)
 
+    # Setup logging and output dirs
+    setup_logger(debug=args.debug, silent=args.silent)
     # Print run header
     print_run_pope_header(args, args.output)
 

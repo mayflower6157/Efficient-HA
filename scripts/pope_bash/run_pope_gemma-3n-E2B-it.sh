@@ -7,7 +7,7 @@ DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 DEVICE="cuda:0"
 BATCH_SIZE=4
 MAX_TOKENS=8
-EARLY_EXIT_LAYERS=10
+EARLY_EXIT_LAYERS=8
 
 # Base output directory
 OUTPUT_DIR="./opera_log/pope_eval_results"
@@ -46,7 +46,9 @@ RESP_FILE="${RESP_DIR}/POPE_type_${POPE}_${METHOD}.jsonl"
         --datapath "$DATA_PATH" \
         --device "$DEVICE" \
         --max_tokens "$MAX_TOKENS" \
-        --output "$RESP_DIR"
+        --output "$RESP_DIR" \
+        --debug 
+        # --silent
       echo ">>> Finished generating responses"
       # 🔽 Force GPU memory to release before next run
       sleep 5
