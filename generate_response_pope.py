@@ -25,7 +25,7 @@ from PIL import Image, ImageOps
 from tqdm import tqdm
 from utils.vcd_add_noise import add_diffusion_noise
 from utils.vcd_sample import evolve_vcd_sampling
-from utils.deco_greedy import evolve_deco_greedy
+from utils.deco_greedy import evolve_deco_greedy, get_early_exit_layers
 from pope_loader import POPEDataSet
 
 POPE_PATH = {
@@ -39,35 +39,6 @@ def set_seed(seed=42):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
-
-def get_num_layers(model):
-    # 1. Direct field (LLaMA/Qwen style)
-    if hasattr(model.config, "num_hidden_layers"):
-        return model.config.num_hidden_layers
-
-    # 2. Gemma-3 style (nested inside text_config)
-    elif hasattr(model.config, "text_config") and hasattr(
-        model.config.text_config, "num_hidden_layers"
-    ):
-        return model.config.text_config.num_hidden_layers
-
-    # 3. Decoder layers (OPT, LLaMA, Gemma, etc.)
-    elif hasattr(model, "model") and hasattr(model.model, "layers"):
-        return len(model.model.layers)
-
-    # 4. Encoder layers (T5, BART)
-    elif hasattr(model, "encoder") and hasattr(model.encoder, "layers"):
-        return len(model.encoder.layers)
-
-    raise ValueError("Could not auto-detect number of layers for this model.")
-
-
-def get_early_exit_layers(model, n):
-    num_layers = get_num_layers(model)
-    max_layer_index = num_layers  # last hidden state index = num_layers
-    early_exit_layers = list(range(max(1, num_layers - (n - 1)), max_layer_index + 1))
-    return early_exit_layers
 
 
 def print_acc(pred_list, label_list, args, base_dir):
