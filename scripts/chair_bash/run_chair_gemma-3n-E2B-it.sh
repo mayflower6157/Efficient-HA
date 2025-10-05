@@ -7,7 +7,7 @@ DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
 DEVICE="cuda:0"
 MAX_TOKENS=64
-EARLY_EXIT_LAYERS=10
+EARLY_EXIT_LAYERS=5
 
 # Base output directory
 OUTPUT_DIR="./opera_log/chair_eval_results"
