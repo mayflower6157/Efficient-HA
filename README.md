@@ -12,11 +12,12 @@ We recommend using **mamba** (faster conda) for dependency management.
 
 ### Create environment
 ```bash
-mamba env create -f environment.yml
-mamba activate EHA
+mamba mamba env create -f environment.yml
+mamba activate EHA-mayflower
+uv pip install -r requirements.txt
 ```
 
-```bash
+```**bash**
 git clone https://github.com/mayflower6157/Efficient-HA.git
 cd transformers
 pip install -e .
