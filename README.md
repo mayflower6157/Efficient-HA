@@ -12,7 +12,7 @@ We recommend using **mamba** (faster conda) for dependency management.
 
 ### Create environment
 ```bash
-mamba mamba env create -f environment.yml
+mamba env create -f environment.yml
 mamba activate EHA-mayflower
 uv pip install 
   -r requirements.txt 
