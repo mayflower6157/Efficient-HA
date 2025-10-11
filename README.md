@@ -20,6 +20,17 @@ uv pip install
   --index-strategy unsafe-best-match
 ```
 
+### ⚡ Install FlashAttention
+
+Install **FlashAttention** using the **pre-built wheels** (make sure the version matches your system’s  
+**GLIBC (Ubuntu)**, **Python**, **PyTorch**, and **CUDA** versions).
+
+📦 Prebuilt wheels are available here:  
+👉 [https://github.com/mjun0812/flash-attention-prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels)
+
+```bash
+uv pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.18/flash_attn-2.7.4+cu124torch2.7-cp310-cp310-linux_x86_64.whl
+
 ```**bash**
 git clone https://github.com/mayflower6157/Efficient-HA.git
 cd transformers
