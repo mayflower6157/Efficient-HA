@@ -38,6 +38,7 @@ for METHOD in "${METHODS[@]}"; do
       --datapath "$DATA_PATH" \
       --device "$DEVICE" \
       --max_tokens "$MAX_TOKENS" \
+      --early_exit_layers "$EARLY_EXIT_LAYERS" \
       --output "$RESP_FILE" 
       # --debug \
       # --silent 
