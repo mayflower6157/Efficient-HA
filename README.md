@@ -14,7 +14,10 @@ We recommend using **mamba** (faster conda) for dependency management.
 ```bash
 mamba mamba env create -f environment.yml
 mamba activate EHA-mayflower
-uv pip install -r requirements.txt
+uv pip install 
+  -r requirements.txt 
+  --extra-index-url https://download.pytorch.org/whl/cu126 
+  --index-strategy unsafe-best-match
 ```
 
 ```**bash**
