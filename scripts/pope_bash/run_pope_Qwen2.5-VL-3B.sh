@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ======== User Config ========
 MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
-DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
+DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
 DEVICE="cuda:0"
-BATCH_SIZE=16
+BATCH_SIZE=1
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
 

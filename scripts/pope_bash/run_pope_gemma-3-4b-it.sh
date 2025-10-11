@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ======== User Config ========
 MODEL_ID="google/gemma-3-4b-it"
-DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
-DEVICE="cuda:0"
-BATCH_SIZE=8
+DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
+DEVICE="cuda:4"
+BATCH_SIZE=1
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
 

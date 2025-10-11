@@ -117,7 +117,7 @@ def load_model(model_id, args):
 
         model = AutoModelForImageTextToText.from_pretrained(
             model_id,
-            dtype=torch.bfloat16,
+            torch_dtype=torch.bfloat16,
             trust_remote_code=True,
             attn_implementation="flash_attention_2",
             device_map=args.device,
@@ -387,7 +387,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--datapath",
         type=str,
-        default="/mnt/disks/extra-disk/datasets/coco2014/val2014",
+        default="/home/li0007xu/EH/Efficient-HA/val2014",
         help="Path to the data",
     )
     parser.add_argument(
