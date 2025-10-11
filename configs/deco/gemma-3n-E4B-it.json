@@ -1,0 +1,29 @@
+{
+  "alpha": 0.6,
+  "threshold_top_p": 0.9,
+  "threshold_top_k": 20,
+
+  "entropy_threshold": 1.55,
+  "margin_threshold": 0.34,
+  "kl_threshold": 0.03,
+  "persistence": 2,
+
+  "alpha_schedule": {
+    "type": "entropy",
+    "schedule": {
+      "low": 0.3,
+      "medium": 0.45,
+      "high": 0.65,
+      "very_high": 0.8
+    },
+    "entropy_ranges": {
+      "low": [0.0, 0.8],
+      "medium": [0.8, 1.4],
+      "high": [1.4, 2.0],
+      "very_high": [2.0, 3.0]
+    },
+    "mode": "adaptive"
+  },
+
+  "debug": false
+} 

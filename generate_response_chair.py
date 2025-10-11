@@ -40,7 +40,7 @@ def load_model(model_id: str, device: str):
     )
     model = AutoModelForImageTextToText.from_pretrained(
         model_id,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
         device_map=device,
         attn_implementation="flash_attention_2",
         trust_remote_code=True,
@@ -116,7 +116,6 @@ def generate_response(model, processor, args, image_path, question: str):
         else:
             raise ValueError(f"❌ Unknown generation method: {args.method}")
 
-        logger.debug(f"Generating with method: {method}")
         outputs = model.generate(**inputs, **gen_kwargs)
         if hasattr(outputs, "sequences"):
             outputs = outputs.sequences

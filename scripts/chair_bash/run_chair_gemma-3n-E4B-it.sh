@@ -7,7 +7,7 @@ DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
 COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
 DEVICE="cuda:0"
 MAX_TOKENS=64
-EARLY_EXIT_LAYERS=10
+EARLY_EXIT_LAYERS=8
 
 # Base output directory
 OUTPUT_DIR="./opera_log/chair_eval_results"
@@ -19,11 +19,11 @@ METHODS=("deco")
 for METHOD in "${METHODS[@]}"; do
   # Directory structure: add <LAYERS> folder only for dola/deco
   if [[ "$METHOD" == "dola" || "$METHOD" == "deco" ]]; then
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/responses_fixed.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/metric_fixed.json"
+    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/responses_fine_tuned.json"
+    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/metric_fine_tuned.json"
   else
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/metric.json"
+    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses_fine_tuned.json"
+    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/metric_fine_tuned.json"
   fi
 
   # Make sure directories exist
@@ -38,7 +38,9 @@ for METHOD in "${METHODS[@]}"; do
       --datapath "$DATA_PATH" \
       --device "$DEVICE" \
       --max_tokens "$MAX_TOKENS" \
-      --output "$RESP_FILE"
+      --output "$RESP_FILE" 
+      # --debug \
+      # --silent
   fi
 
   # Step 2: Run CHAIR eval if not already present

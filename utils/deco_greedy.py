@@ -7,6 +7,7 @@ import json
 import inspect
 import warnings
 import traceback
+from pathlib import Path
 from loguru import logger
 
 from dataclasses import dataclass
@@ -279,7 +280,7 @@ def get_top_p_candidates_topk_fixed(
 
     batch_size, top_k = candidate_tokens_probs.shape
 
-    logger.info(
+    logger.debug(
         f"[get_top_p] Start | batch={batch_size}, top_k={top_k}, "
         f"threshold_top_p={threshold_top_p}, threshold_top_k={threshold_top_k}"
     )
@@ -313,7 +314,7 @@ def get_top_p_candidates_topk_fixed(
         torch.searchsorted(cumulative_probs, threshold_top_p_tensor, right=False) + 1
     )
     cutoffs = torch.clamp(cutoffs, max=threshold_top_k)
-    logger.info(f"[get_top_p] cutoffs={cutoffs.tolist()}")
+    logger.debug(f"[get_top_p] cutoffs={cutoffs.tolist()}")
 
     # --- Step 4: Slice candidates per batch ---
     candidate_tokens_final = []
@@ -348,7 +349,7 @@ def get_top_p_candidates_topk_fixed(
                 f"first5_ids={sorted_ids[i, :min(5, cutoff_i)].tolist()}"
             )
 
-    logger.info("[get_top_p] Completed nucleus filtering.")
+    logger.debug("[get_top_p] Completed nucleus filtering.")
 
     return candidate_tokens_final, cutoffs
 
@@ -433,7 +434,7 @@ def select_best_layers(layer_max_probs, early_exit_layers):
     """
 
     num_layers, batch_size = layer_max_probs.shape
-    logger.info(f"[select_best_layers] layer_max_probs.shape={layer_max_probs.shape}")
+    logger.debug(f"[select_best_layers] layer_max_probs.shape={layer_max_probs.shape}")
 
     # Base is the first early_exit_layer (e.g., 25)
     base = min(early_exit_layers)
@@ -465,14 +466,14 @@ def select_best_layers(layer_max_probs, early_exit_layers):
 
     # Map best_idx (0..len(E)-1) back to original layer indices
     selected_layers = [early_exit_layers[i.item()] for i in best_idx]
-    logger.info(f"[select_best_layers] selected premature layers={selected_layers}")
+    logger.debug(f"[select_best_layers] selected premature layers={selected_layers}")
 
     return premature_max_probs, selected_layers
 
 
 def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
     # Log initial type
-    logger.info(f"[normalize] Input type={type(candidate_tokens_ids)}")
+    logger.debug(f"[normalize] Input type={type(candidate_tokens_ids)}")
 
     if isinstance(candidate_tokens_ids, list):
         if all(x.shape == candidate_tokens_ids[0].shape for x in candidate_tokens_ids):
@@ -497,7 +498,7 @@ def normalize_candidate_tokens_ids(candidate_tokens_ids, pad_value=-1):
     safe_ids = candidate_tokens_ids.clone()
     safe_ids[~mask] = 0
 
-    logger.info(
+    logger.debug(
         f"[normalize] After reshape: shape={safe_ids.shape}, "
         f"device={safe_ids.device}, dtype={safe_ids.dtype}"
     )
@@ -534,6 +535,40 @@ def check_tensor_health(name, tensor):
         raise ValueError(f"{name} contains NaN or Inf.")
 
 
+def load_deco_config(model_id: str):
+    """Load DECO configuration for a specific model, with logging info."""
+    model_name = model_id.split("/")[-1].strip()
+    base_path = Path("configs/deco/base.json")
+    model_cfg_path = Path(f"configs/deco/{model_name}.json")
+
+    # --- Load base config ---
+    logger.info(f"Loading base DECO config from {base_path}")
+    base = json.load(open(base_path))
+
+    # --- Check if model-specific config exists ---
+    if not model_cfg_path.exists():
+        logger.warning(
+            f"No model-specific DECO config found for '{model_name}', using base config only."
+        )
+        return base
+
+    # --- Load override ---
+    logger.info(f"Found override config: {model_cfg_path}")
+    override = json.load(open(model_cfg_path))
+
+    if "inherit" in override:
+        logger.debug(f"Removing 'inherit' key from {model_cfg_path}")
+        del override["inherit"]
+
+    merged = {**base, **override}
+    logger.info(
+        f"✅ Loaded DECO config for model '{model_name}' "
+        f"({len(override)} override keys, total {len(merged)} fields)."
+    )
+
+    return merged
+
+
 def evolve_deco_greedy(model=None, args=None):
     """
     Patch Transformers' GenerationMixin._sample with a DECO-aware greedy search.
@@ -546,21 +581,13 @@ def evolve_deco_greedy(model=None, args=None):
     global DECO_INITIALIZED, DECO_CONFIG_CACHE
 
     if DECO_INITIALIZED:
-        logger.info(
+        logger.debug(
             "[DECO] evolve_deco_greedy() already initialized — skipping re-patch."
         )
-        logger.info("[DECO] DECO greedy decoding remains active globally.")
+        logger.debug("[DECO] DECO greedy decoding remains active globally.")
         return DECO_CONFIG_CACHE
 
-    # Load DECO config from JSON
-    config_path = os.path.join(
-        "/home/mayflower/Efficient-HA/configs", "deco_config.json"
-    )
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"⚠️ DECO config not found at {config_path}")
-    with open(config_path, "r") as f:
-        # logger.info(f"[evolve_deco_greedy] Loading DECO config from {config_path}")
-        deco_config = json.load(f)
+    deco_config = load_deco_config(args.model_id)
 
     # ---Compute early-exit layers (only once) ---
     # --- Step 1: compute early-exit layers dynamically if model + args provided ---
@@ -660,7 +687,7 @@ def evolve_deco_greedy(model=None, args=None):
         early_exit_layers = deco_config.get(
             "early_exit_layers", getattr(generation_config, "early_exit_layers", [])
         )
-        logger.info(f"[evolve_deco_greedy] early_exit_layers: {early_exit_layers}")
+        logger.debug(f"[evolve_deco_greedy] early_exit_layers: {early_exit_layers}")
         entropy_threshold = deco_config.get("entropy_threshold", 1.6)
         margin_threshold = deco_config.get("margin_threshold", 0.35)
         kl_threshold = deco_config.get("kl_threshold", 0.03)
@@ -958,7 +985,7 @@ def evolve_deco_greedy(model=None, args=None):
 
             # Gate early-exit layer selection based on confidence
             if not can_exit.all():
-                logger.info(
+                logger.debug(
                     "[DECO] Confidence too low — skipping early exit this round."
                 )
                 selected_premature_layer_idx = [
@@ -1002,7 +1029,7 @@ def evolve_deco_greedy(model=None, args=None):
                 ),
             )
             if alpha_dynamic != alpha:
-                logger.info(
+                logger.debug(
                     f"[DECO] Dynamic alpha updated from {alpha} → {alpha_dynamic}"
                 )
             alpha = alpha_dynamic
@@ -1031,8 +1058,8 @@ def evolve_deco_greedy(model=None, args=None):
             # pre-process distribution
             # Check health
             check_tensor_health("final_token_logits", final_token_logits)
-            logger.info(f"[CHECK] Pre-processor logits summary:")
-            logger.info(
+            logger.debug(f"[CHECK] Pre-processor logits summary:")
+            logger.debug(
                 f"  shape={final_token_logits.shape}, "
                 f"min={final_token_logits.min().item():.4f}, "
                 f"max={final_token_logits.max().item():.4f}, "
@@ -1042,8 +1069,8 @@ def evolve_deco_greedy(model=None, args=None):
             final_token_scores = logits_processor(input_ids, final_token_logits)
             # final_probs = nn.functional.softmax(final_token_scores, dim=-1)
             # Post-operation sanity check
-            logger.info(f"[CHECK] Post-processor scores summary:")
-            logger.info(
+            logger.debug(f"[CHECK] Post-processor scores summary:")
+            logger.debug(
                 f"  shape={final_token_scores.shape}, "
                 f"min={final_token_scores.min().item():.4f}, "
                 f"max={final_token_scores.max().item():.4f}, "
@@ -1063,11 +1090,11 @@ def evolve_deco_greedy(model=None, args=None):
                     exc_info=True,
                 )
 
-            logger.info(f"final_token_scores shape: {final_token_scores.shape}")
+            logger.debug(f"final_token_scores shape: {final_token_scores.shape}")
 
             if candidate_tokens_ids is not None:
                 # Log candidate IDs (detached and moved to CPU so they print nicely)
-                logger.info(
+                logger.debug(
                     f"[DEBUG] candidate_tokens_ids: "
                     f"shape={candidate_tokens_ids.shape}, "
                     f"device={candidate_tokens_ids.device}, "
@@ -1075,12 +1102,12 @@ def evolve_deco_greedy(model=None, args=None):
                     f"min={candidate_tokens_ids.min().item()}, "
                     f"max={candidate_tokens_ids.max().item()}"
                 )
-                logger.info(
+                logger.debug(
                     f"[DEBUG] candidate_tokens_ids values (first 50): {candidate_tokens_ids.detach().flatten().cpu()[:50].tolist()}"
                 )
 
                 # Log final token scores
-                logger.info(
+                logger.debug(
                     f"[DEBUG] final_token_scores: "
                     f"shape={final_token_scores.shape}, "
                     f"device={final_token_scores.device}, "
@@ -1142,7 +1169,7 @@ def evolve_deco_greedy(model=None, args=None):
                 next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
             else:
                 next_tokens = torch.argmax(final_token_scores, dim=-1)
-            logger.info(
+            logger.debug(
                 f"next_tokens shape: {next_tokens.shape}, values: {next_tokens[:10]}"
             )
 
