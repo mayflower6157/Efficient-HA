@@ -12,6 +12,7 @@ from transformers import (
 )  # , AutoModelForVision2Seqrocessor
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from qwen_vl_utils import process_vision_info
+from loguru import logger
 import time
 from utils.vcd_add_noise import add_diffusion_noise, add_diffusion_noise_pil
 
@@ -117,7 +118,7 @@ def load_model(model_id, args):
 
         model = AutoModelForImageTextToText.from_pretrained(
             model_id,
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             trust_remote_code=True,
             attn_implementation="flash_attention_2",
             device_map=args.device,
@@ -180,10 +181,11 @@ def prepare_inputs(model, processor, image_paths, questions):
         # Qwen, LLaVA etc. accept flat list [img1,img2,...]
         image_paths = image_paths
 
+
     inputs = processor(
         text=texts,
-        images=image_paths,  # let processor handle batching
-        padding=True,
+        images=image_paths,
+        padding=True
         return_tensors="pt",
     )
 

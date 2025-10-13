@@ -46,7 +46,10 @@ for METHOD in "${METHODS[@]}"; do
         --datapath "$DATA_PATH" \
         --device "$DEVICE" \
         --max_tokens "$MAX_TOKENS" \
-        --output "$RESP_DIR"
+        --early_exit_layers "$EARLY_EXIT_LAYERS" \
+        --output "$RESP_DIR" \
+        # --debug 
+        # --silent
       echo ">>> Finished generating responses"
     # 🔽 Force GPU memory to release before next run
     sleep 5

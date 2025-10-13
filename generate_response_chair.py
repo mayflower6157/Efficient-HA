@@ -130,7 +130,9 @@ def generate_response(model, processor, args, image_path, question: str):
 # 🧩 3. JSON Processing Loop
 # ============================================
 def process_json(model, processor, args, output_json, save_every=20):
-    input_jsonl = Path("/home/mayflower/Efficient-HA/opera_log/llava-1.5/greedy.jsonl")
+    input_jsonl = Path(
+        "/home/li0007xu/mayflower/Efficient-HA/opera_log/llava-1.5/greedy.jsonl"
+    )
     with open(input_jsonl, "r", encoding="utf-8") as f:
         samples = [json.loads(line) for line in f]
         for s in samples:

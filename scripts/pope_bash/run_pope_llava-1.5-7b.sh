@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ======== User Config ========
 MODEL_ID="llava-hf/llava-1.5-7b-hf"
-DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
-DEVICE="cuda:0"
-BATCH_SIZE=16
+DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
+DEVICE="cuda:4"
+BATCH_SIZE=1
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
 
@@ -45,7 +45,10 @@ for METHOD in "${METHODS[@]}"; do
         --datapath "$DATA_PATH" \
         --device "$DEVICE" \
         --max_tokens "$MAX_TOKENS" \
-        --output "$RESP_DIR"
+        --early_exit_layers "$EARLY_EXIT_LAYERS" \
+        --output "$RESP_DIR" \
+        # --debug 
+        --silent
       echo ">>> Finished generating responses"
     else
       echo ">>> Skipping: ${RESP_FILE} already exists"

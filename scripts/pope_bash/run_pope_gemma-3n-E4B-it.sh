@@ -3,8 +3,8 @@ set -euo pipefail
 
 # ======== User Config ========
 MODEL_ID="google/gemma-3n-E4B-it"
-DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
-DEVICE="cuda:0"
+DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
+DEVICE="cuda:4"
 BATCH_SIZE=4
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
@@ -46,7 +46,10 @@ for METHOD in "${METHODS[@]}"; do
         --datapath "$DATA_PATH" \
         --device "$DEVICE" \
         --max_tokens "$MAX_TOKENS" \
-        --output "$RESP_DIR"
+        --early_exit_layers "$EARLY_EXIT_LAYERS" \
+        --output "$RESP_DIR" \
+        # --debug 
+        # --silent
       echo ">>> Finished generating responses"
     else
       echo ">>> Skipping: ${RESP_FILE} already exists"

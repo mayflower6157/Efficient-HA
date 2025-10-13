@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ======== User Config ========
 MODEL_ID="google/gemma-3-4b-it"
-DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
-COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
-DEVICE="cuda:0"
+DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
+COCO_ANN="/home/li0007xu/Reasoning/Deco/annotations_2014_coco"
+DEVICE="cuda:4"
 MAX_TOKENS=64
 EARLY_EXIT_LAYERS=8
 

@@ -3,11 +3,11 @@ set -euo pipefail
 
 # ======== User Config ========
 MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
-DATA_PATH="/mnt/disks/extra-disk/datasets/coco2014/val2014"
-COCO_ANN="/mnt/disks/extra-disk/datasets/coco2014/annotations"
-DEVICE="cuda:0"
+DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
+COCO_ANN="/home/li0007xu/Reasoning/Deco/annotations_2014_coco"
+DEVICE="cuda:4"
 MAX_TOKENS=64
-EARLY_EXIT_LAYERS=10
+EARLY_EXIT_LAYERS=8
 
 # Base output directory
 OUTPUT_DIR="./opera_log/chair_eval_results"
@@ -39,9 +39,9 @@ for METHOD in "${METHODS[@]}"; do
       --device "$DEVICE" \
       --max_tokens "$MAX_TOKENS" \
       --early_exit_layers "$EARLY_EXIT_LAYERS" \
-      --output "$RESP_FILE" \
-      --debug \
-      --silent 
+      --output "$RESP_FILE" 
+      # --debug \
+      # --silent 
   fi
 
   # Step 2: Run CHAIR eval if not already present

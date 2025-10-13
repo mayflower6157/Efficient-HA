@@ -35,6 +35,7 @@ def print_run_pope_header(args, output):
     print(f"Model: {args.model_id}")
     print(f"Method: {args.method}")
     print(f"POPE Type: {args.pope_type}")
+    print(f"Device: {args.device}")
     print(f"Batch size: {args.batch_size}")
     print(f"Output dir: {output}")
     print("=" * 50)
