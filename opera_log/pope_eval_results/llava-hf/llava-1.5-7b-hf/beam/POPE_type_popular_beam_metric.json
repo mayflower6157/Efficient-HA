@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "popular",
+  "Method": "beam",
+  "ConfusionMatrix": [
+    [
+      1313,
+      187
+    ],
+    [
+      258,
+      1242
+    ]
+  ],
+  "Accuracy": 0.8516666666666667,
+  "TP": 1313,
+  "FP": 187,
+  "FN": 258,
+  "TN": 1242,
+  "Report": {
+    "0": {
+      "precision": 0.8691392582225332,
+      "recall": 0.828,
+      "f1-score": 0.8480710139979515,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8357733927434755,
+      "recall": 0.8753333333333333,
+      "f1-score": 0.855096059915337,
+      "support": 1500.0
+    },
+    "accuracy": 0.8516666666666667,
+    "macro avg": {
+      "precision": 0.8524563254830044,
+      "recall": 0.8516666666666666,
+      "f1-score": 0.8515835369566442,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8524563254830042,
+      "recall": 0.8516666666666667,
+      "f1-score": 0.8515835369566442,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/llava-hf/llava-1.5-7b-hf/beam/POPE_type_popular_beam_detailed.jsonl"
+}

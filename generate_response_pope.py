@@ -1,6 +1,8 @@
 import copy
 import gc
 import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import argparse
 import json
 import numpy as np
@@ -9,7 +11,7 @@ import re
 from transformers import (
     AutoProcessor,
     AutoModelForImageTextToText,
-)  # , AutoModelForVision2Seqrocessor
+)
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from qwen_vl_utils import process_vision_info
 from loguru import logger
@@ -42,17 +44,38 @@ def set_seed(seed=42):
     torch.cuda.manual_seed_all(seed)
 
 
-def print_acc(pred_list, label_list, args, base_dir):
+def print_acc(detail_file, args, base_dir):
     """
-    Compute and print POPE metrics, and save them as JSONL files.
-    Compatible with the existing evaluation structure.
+    Compute and print POPE metrics directly from detailed_results.jsonl file.
+    Automatically extracts pred_list and label_list.
     """
+    assert os.path.exists(detail_file), f"❌ Detail file not found: {detail_file}"
+
     os.makedirs(base_dir, exist_ok=True)
+
+    # === Load predictions and labels ===
+    pred_list, label_list = [], []
+    with open(detail_file, "r") as f:
+        for line in f:
+            try:
+                item = json.loads(line.strip())
+                pred_list.append(int(item["prediction"]))
+                label_list.append(int(item["label"]))
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+    total = len(pred_list)
+    logger.info(f"📄 Loaded {total} samples from {detail_file}")
+
+    if total == 0:
+        logger.warning(
+            "⚠️ No valid results found in file — aborting metric computation."
+        )
+        return
 
     # === Compute metrics ===
     cm = confusion_matrix(label_list, pred_list, labels=[1, 0])
     TP, FP, FN, TN = cm.ravel() if cm.size == 4 else (0, 0, 0, 0)
-
     acc = accuracy_score(label_list, pred_list)
     report_dict = classification_report(label_list, pred_list, output_dict=True)
     report_text = classification_report(
@@ -60,36 +83,39 @@ def print_acc(pred_list, label_list, args, base_dir):
     )
 
     # === Print metrics to console ===
-    print("\n==================== POPE Evaluation ====================")
-    print(f"POPE Type: {args.pope_type} | Method: {args.method}")
-    print("----------------------------------------------------------")
-    print("Confusion Matrix (labels: [Positive=1, Negative=0])")
-    print(cm)
-    print("\nClassification Report:")
-    print(report_text)
-    print(f"Accuracy: {acc:.4f}")
-    print("==========================================================")
+    logger.info("\n=================== POPE Evaluation ===================")
+    logger.info(f"POPE Type: {args.pope_type} | Method: {args.method}")
+    logger.info("-------------------------------------------------------")
+    logger.info("Confusion Matrix (labels: Positive=1, Negative=0)")
+    logger.info(cm)
+    logger.info("\nClassification Report:")
+    logger.info(report_text)
+    logger.info(f"Accuracy: {acc:.4f}")
+    logger.info("========================================================")
 
-    # === Save metrics to JSONL ===
+    # === Save metrics ===
     metric_path = os.path.join(
-        base_dir, f"POPE_type_{args.pope_type}_{args.method}_metric.jsonl"
+        base_dir, f"POPE_type_{args.pope_type}_{args.method}_metric.json"
     )
 
-    with open(metric_path, "a") as f:
-        json.dump(
-            {
-                "POPE_Type": args.pope_type,
-                "Method": args.method,
-                "ConfusionMatrix": cm.tolist(),
-                "Accuracy": acc,
-                "Report": report_dict,
-            },
-            f,
-            indent=2,
-        )
-        f.write("\n")
+    metrics = {
+        "POPE_Type": args.pope_type,
+        "Method": args.method,
+        "ConfusionMatrix": cm.tolist(),
+        "Accuracy": acc,
+        "TP": int(TP),
+        "FP": int(FP),
+        "FN": int(FN),
+        "TN": int(TN),
+        "Report": report_dict,
+        "TotalSamples": total,
+        "DetailFile": os.path.abspath(detail_file),
+    }
 
-    print(f"✅ Metrics appended to: {metric_path}\n")
+    with open(metric_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+
+    logger.success(f"💾 Metrics saved to: {metric_path}")
 
 
 def recorder(out):
@@ -108,6 +134,7 @@ def load_model(model_id, args):
         processor = AutoProcessor.from_pretrained(
             model_id,
             trust_remote_code=True,
+            use_fast=True,
             min_pixels=min_pixels,
             max_pixels=max_pixels,
         )
@@ -127,7 +154,7 @@ def load_model(model_id, args):
         model.eval()
         return model, processor
     except Exception as e:
-        print(f"Error loading model {model_id}: {e}")
+        logger.error(f"Error loading model {model_id}: {e}")
         raise
 
 
@@ -181,11 +208,10 @@ def prepare_inputs(model, processor, image_paths, questions):
         # Qwen, LLaVA etc. accept flat list [img1,img2,...]
         image_paths = image_paths
 
-
     inputs = processor(
         text=texts,
         images=image_paths,
-        padding=True
+        padding=True,
         return_tensors="pt",
     )
 
@@ -212,19 +238,19 @@ def generate_ids(model, inputs, args):
             do_sample=False,
             repetition_penalty=1.2,
             trust_remote_code=True,
+            return_dict_in_generate=True,
+            output_hidden_states=True,
         )
 
     if method == "deco":
-        evolve_deco_greedy()  # side-effect initialization
+        evolve_deco_greedy(model, args)  # side-effect initialization
         early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
         out = model.generate(
             **inputs,
             max_new_tokens=args.max_tokens,
             do_sample=False,
-            alpha=0.6,
-            threshold_top_p=0.9,
-            threshold_top_k=20,
             early_exit_layers=early_exit_layers,
+            trust_remote_code=True,
             return_dict_in_generate=True,
             output_hidden_states=True,
         )
@@ -271,7 +297,7 @@ def get_response(model, processor, args, image_paths, questions):
         return decode_output(processor, inputs, generated_ids)
 
 
-def process_json(model, processor, args, output):
+def process_json(model, processor, args):
     args.pope_path = POPE_PATH[args.pope_type]
     pope_dataset = POPEDataSet(
         pope_path=args.pope_path,
@@ -287,19 +313,19 @@ def process_json(model, processor, args, output):
 
     total_samples = len(pope_dataset)
     # Fix: Handle both directory and file paths
-    if output:
-        if os.path.isdir(output) or output.endswith("/"):
+    if args.output:
+        if os.path.isdir(args.output) or args.output.endswith("/"):
             # If output is a directory, create the file inside it
-            os.makedirs(output, exist_ok=True)
-            base_dir = output
+            os.makedirs(args.output, exist_ok=True)
+            base_dir = args.output
             detail_file = os.path.join(
-                output, f"POPE_type_{args.pope_type}_{args.method}_detailed.jsonl"
+                args.output, f"POPE_type_{args.pope_type}_{args.method}_detailed.jsonl"
             )
         else:
             # If output is a file path, use its directory
-            os.makedirs(os.path.dirname(output), exist_ok=True)
-            base_dir = os.path.dirname(output)
-            detail_file = output.replace(".jsonl", "_detailed.jsonl")
+            os.makedirs(os.path.dirname(args.output), exist_ok=True)
+            base_dir = os.path.dirname(args.output)
+            detail_file = args.output.replace(".jsonl", "_detailed.jsonl")
     else:
         base_dir = "outputs"
         os.makedirs(base_dir, exist_ok=True)
@@ -307,42 +333,72 @@ def process_json(model, processor, args, output):
             base_dir, f"POPE_type_{args.pope_type}_{args.method}_detailed.jsonl"
         )
 
-    pred_list, label_list = [], []
-    detailed_results = []  # Store detailed predictions
+    # === Resume Check ===
+    existing_samples = 0
+    if os.path.exists(detail_file):
+        with open(detail_file, "r") as f:
+            existing_samples = sum(1 for _ in f)
+        logger.info(
+            f"🔄 Found existing results: {existing_samples} samples already processed."
+        )
+    else:
+        logger.info("🆕 Starting fresh evaluation.")
+        open(detail_file, "w").close()  # ensure f
+
+    processed_count = existing_samples
+    pred_list, label_list, detailed_results = [], [], []
     start_time = time.time()
     for batch_id, data in tqdm(enumerate(pope_loader), total=len(pope_loader)):
+        # Skip batches that were already processed
+        idx = batch_id * pope_loader.batch_size
+        if idx < existing_samples:
+            continue
+
         # Loop over items in the batch
         responses = get_response(
             model, processor, args, data["image_path"], data["query"]
         )
+
         for resp, label, img_path, query in zip(
             responses, data["label"], data["image_path"], data["query"]
         ):
             pred = recorder(resp)
+            result = {
+                "image": os.path.basename(img_path),
+                "question": query,
+                "response": resp,
+                "prediction": pred,
+                "label": int(label),
+                "correct": pred == int(label),
+            }
+            detailed_results.append(result)
             pred_list.append(pred)
             label_list.append(int(label))
+            processed_count += 1  # ✅ increment per sample
 
-            # Store detailed result
-            detailed_results.append(
-                {
-                    "image": os.path.basename(img_path),
-                    "question": query,
-                    "response": resp,
-                    "prediction": pred,
-                    "label": int(label),
-                    "correct": pred == int(label),
-                }
-            )
-        if batch_id % 5 == 0:
+        # --- Periodic checkpoint ---
+        if processed_count % 100 == 0:
+            with open(detail_file, "a") as f:
+                for res in detailed_results:
+                    f.write(json.dumps(res) + "\n")
+            detailed_results.clear()
             torch.cuda.empty_cache()
+            logger.info(
+                f"💾 Saved progress at sample {processed_count}/{len(pope_dataset)}"
+            )
 
-    # Save detailed results
-    with open(detail_file, "w") as f:
-        for result in detailed_results:
-            f.write(json.dumps(result) + "\n")
+    # === Final save ===
+    if detailed_results:
+        with open(detail_file, "a") as f:
+            for res in detailed_results:
+                f.write(json.dumps(res) + "\n")
+        logger.info("✅ Final chunk saved.")
 
-    if len(pred_list) != 0:
-        print_acc(pred_list, label_list, args, args.output)
+    # === Post summary ===
+    processed_total = len(pred_list) + existing_samples
+    logger.success(f"✅ Completed {processed_total}/{len(pope_dataset)} samples.")
+    if pred_list:
+        print_acc(detail_file, args, base_dir)
 
     # Print run summary
     print_run_pope_summary(start_time, total_samples, args.output)
@@ -354,7 +410,9 @@ def validate_args(args):
         raise ValueError(f"early_exit_layers must be >= 1 for {args.method}")
 
     if args.batch_size > 16 and args.method == "vcd":
-        print("Warning: Large batch size with VCD may cause OOM. Consider reducing.")
+        logger.warning(
+            "Warning: Large batch size with VCD may cause OOM. Consider reducing."
+        )
 
     if not os.path.exists(args.datapath):
         raise FileNotFoundError(f"Data path not found: {args.datapath}")
@@ -371,7 +429,6 @@ if __name__ == "__main__":
         default=None,
         help="Output file to store model responses",
     )
-
     parser.add_argument(
         "--pope_type",
         type=str,
@@ -398,6 +455,7 @@ if __name__ == "__main__":
         default=8,
         help="Batch size for DataLoader (depends on GPU memory)",
     )
+
     parser.add_argument("--method", type=str, default="vcd")
     parser.add_argument("--cd_alpha", type=float, default=1)
     parser.add_argument("--cd_beta", type=float, default=0.1)
@@ -405,6 +463,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--max_tokens", type=int, default=8)
     parser.add_argument("--early_exit_layers", type=int, default=10)
+    parser.add_argument("--resume_if_exists", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--silent", action="store_true")
     args = parser.parse_args()
@@ -417,4 +476,4 @@ if __name__ == "__main__":
 
     model, processor = load_model(args.model_id, args)
 
-    process_json(model, processor, args, args.output)
+    process_json(model, processor, args)

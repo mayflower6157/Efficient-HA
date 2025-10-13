@@ -3,6 +3,8 @@
         "cuda",
         "datapath",
         "dola",
+        "llava",
+        "mpimg",
         "Qwen"
     ]
 }
