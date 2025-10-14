@@ -4,7 +4,7 @@ set -euo pipefail
 # ======== User Config ========
 MODEL_ID="google/gemma-3-4b-it"
 DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
-DEVICE="cuda:0"
+DEVICE="cuda:1"
 BATCH_SIZE=1
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
@@ -13,7 +13,8 @@ EARLY_EXIT_LAYERS=10
 OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # Evaluation methods & POPE types
-METHODS=("dola")
+METHODS=("beam" "greedy" "dola" "deco")
+#METHODS=("dola")
 POPE_TYPES=("random" "popular" "adversarial")
 
 # ======== Run Loop ========

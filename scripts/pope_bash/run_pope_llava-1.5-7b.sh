@@ -13,7 +13,8 @@ EARLY_EXIT_LAYERS=10
 OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # Evaluation methods & POPE types
-METHODS=("dola")
+METHODS=("beam" "greedy" "dola" "deco")
+#METHODS=("dola")
 POPE_TYPES=("random" "popular" "adversarial")
 
 # ======== Run Loop ========

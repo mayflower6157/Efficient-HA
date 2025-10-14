@@ -1,40 +1,48 @@
 {
+  "POPE_Type": "adversarial",
+  "Method": "dola",
   "ConfusionMatrix": [
     [
-      1323,
-      177
+      1318,
+      182
     ],
     [
-      464,
-      1036
+      455,
+      1045
     ]
   ],
-  "Accuracy": 0.7863333333333333,
+  "Accuracy": 0.7876666666666666,
+  "TP": 1318,
+  "FP": 182,
+  "FN": 455,
+  "TN": 1045,
   "Report": {
     "0": {
-      "precision": 0.854080791426216,
-      "recall": 0.6906666666666667,
-      "f1-score": 0.7637301879837818,
+      "precision": 0.8516707416462918,
+      "recall": 0.6966666666666667,
+      "f1-score": 0.7664099743307664,
       "support": 1500.0
     },
     "1": {
-      "precision": 0.7403469501958589,
-      "recall": 0.882,
-      "f1-score": 0.8049893519926985,
+      "precision": 0.7433728144388043,
+      "recall": 0.8786666666666667,
+      "f1-score": 0.8053773296669722,
       "support": 1500.0
     },
-    "accuracy": 0.7863333333333333,
+    "accuracy": 0.7876666666666666,
     "macro avg": {
-      "precision": 0.7972138708110375,
-      "recall": 0.7863333333333333,
-      "f1-score": 0.7843597699882401,
+      "precision": 0.7975217780425481,
+      "recall": 0.7876666666666667,
+      "f1-score": 0.7858936519988693,
       "support": 3000.0
     },
     "weighted avg": {
-      "precision": 0.7972138708110375,
-      "recall": 0.7863333333333333,
-      "f1-score": 0.7843597699882401,
+      "precision": 0.797521778042548,
+      "recall": 0.7876666666666666,
+      "f1-score": 0.7858936519988693,
       "support": 3000.0
     }
-  }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3-4b-it/10_layers/dola/POPE_type_adversarial_dola_detailed.jsonl"
 }

@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "popular",
+  "Method": "dola",
+  "ConfusionMatrix": [
+    [
+      1114,
+      386
+    ],
+    [
+      65,
+      1435
+    ]
+  ],
+  "Accuracy": 0.8496666666666667,
+  "TP": 1114,
+  "FP": 386,
+  "FN": 65,
+  "TN": 1435,
+  "Report": {
+    "0": {
+      "precision": 0.7880285557386052,
+      "recall": 0.9566666666666667,
+      "f1-score": 0.8641975308641975,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.9448685326547922,
+      "recall": 0.7426666666666667,
+      "f1-score": 0.8316536020903322,
+      "support": 1500.0
+    },
+    "accuracy": 0.8496666666666667,
+    "macro avg": {
+      "precision": 0.8664485441966987,
+      "recall": 0.8496666666666667,
+      "f1-score": 0.8479255664772649,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8664485441966987,
+      "recall": 0.8496666666666667,
+      "f1-score": 0.8479255664772648,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/llava-hf/llava-1.5-7b-hf/10_layers/dola/POPE_type_popular_dola_detailed.jsonl"
+}

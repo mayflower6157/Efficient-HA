@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "adversarial",
+  "Method": "dola",
+  "ConfusionMatrix": [
+    [
+      1114,
+      386
+    ],
+    [
+      153,
+      1347
+    ]
+  ],
+  "Accuracy": 0.8203333333333334,
+  "TP": 1114,
+  "FP": 386,
+  "FN": 153,
+  "TN": 1347,
+  "Report": {
+    "0": {
+      "precision": 0.777264858626659,
+      "recall": 0.898,
+      "f1-score": 0.8332817816269719,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8792423046566693,
+      "recall": 0.7426666666666667,
+      "f1-score": 0.805204192265992,
+      "support": 1500.0
+    },
+    "accuracy": 0.8203333333333334,
+    "macro avg": {
+      "precision": 0.8282535816416641,
+      "recall": 0.8203333333333334,
+      "f1-score": 0.8192429869464819,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8282535816416642,
+      "recall": 0.8203333333333334,
+      "f1-score": 0.8192429869464819,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/llava-hf/llava-1.5-7b-hf/10_layers/dola/POPE_type_adversarial_dola_detailed.jsonl"
+}

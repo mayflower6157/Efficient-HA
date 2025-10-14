@@ -1,40 +1,48 @@
 {
+  "POPE_Type": "random",
+  "Method": "greedy",
   "ConfusionMatrix": [
     [
-      1305,
-      195
+      1308,
+      192
     ],
     [
       259,
       1151
     ]
   ],
-  "Accuracy": 0.8439862542955326,
+  "Accuracy": 0.8450171821305842,
+  "TP": 1308,
+  "FP": 192,
+  "FN": 259,
+  "TN": 1151,
   "Report": {
     "0": {
-      "precision": 0.8551263001485884,
+      "precision": 0.857036485480268,
       "recall": 0.8163120567375887,
-      "f1-score": 0.8352685050798259,
+      "f1-score": 0.83617871413004,
       "support": 1410.0
     },
     "1": {
-      "precision": 0.8343989769820972,
-      "recall": 0.87,
-      "f1-score": 0.8518276762402088,
+      "precision": 0.8347160178685387,
+      "recall": 0.872,
+      "f1-score": 0.8529507662210629,
       "support": 1500.0
     },
-    "accuracy": 0.8439862542955326,
+    "accuracy": 0.8450171821305842,
     "macro avg": {
-      "precision": 0.8447626385653428,
-      "recall": 0.8431560283687943,
-      "f1-score": 0.8435480906600173,
+      "precision": 0.8458762516744034,
+      "recall": 0.8441560283687943,
+      "f1-score": 0.8445647401755514,
       "support": 2910.0
     },
     "weighted avg": {
-      "precision": 0.8444421129493661,
-      "recall": 0.8439862542955326,
-      "f1-score": 0.8438041603171366,
+      "precision": 0.8455310898041188,
+      "recall": 0.8450171821305842,
+      "f1-score": 0.844824101805825,
       "support": 2910.0
     }
-  }
+  },
+  "TotalSamples": 2910,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3-4b-it/greedy/POPE_type_random_greedy_detailed.jsonl"
 }
