@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "random",
+  "Method": "greedy",
+  "ConfusionMatrix": [
+    [
+      1340,
+      160
+    ],
+    [
+      170,
+      1240
+    ]
+  ],
+  "Accuracy": 0.8865979381443299,
+  "TP": 1340,
+  "FP": 160,
+  "FN": 170,
+  "TN": 1240,
+  "Report": {
+    "0": {
+      "precision": 0.8857142857142857,
+      "recall": 0.8794326241134752,
+      "f1-score": 0.8825622775800712,
+      "support": 1410.0
+    },
+    "1": {
+      "precision": 0.8874172185430463,
+      "recall": 0.8933333333333333,
+      "f1-score": 0.8903654485049833,
+      "support": 1500.0
+    },
+    "accuracy": 0.8865979381443299,
+    "macro avg": {
+      "precision": 0.8865657521286661,
+      "recall": 0.8863829787234043,
+      "f1-score": 0.8864638630425272,
+      "support": 2910.0
+    },
+    "weighted avg": {
+      "precision": 0.8865920861414819,
+      "recall": 0.8865979381443299,
+      "f1-score": 0.8865845306341495,
+      "support": 2910.0
+    }
+  },
+  "TotalSamples": 2910,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/llava-hf/llava-1.5-7b-hf/greedy/POPE_type_random_greedy_detailed.jsonl"
+}

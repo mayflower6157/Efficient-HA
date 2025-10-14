@@ -83,19 +83,20 @@ def generate_response(model, processor, args, image_path, question: str):
         elif method == "beam":
             gen_kwargs = dict(max_new_tokens=args.max_tokens, num_beams=5)
         elif method == "dola":
-            args.early_exit_layers = get_early_exit_layers(
-                model, args.early_exit_layers
-            )
+            early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
             gen_kwargs = dict(
                 max_new_tokens=args.max_tokens,
                 custom_generate="transformers-community/dola",
-                dola_layers=args.early_exit_layers,
+                dola_layers=early_exit_layers,
                 repetition_penalty=1.2,
+                trust_remote_code=True,
             )
         elif method == "deco":
+            early_exit_layers = get_early_exit_layers(model, args.early_exit_layers)
             evolve_deco_greedy(model, args)
             gen_kwargs = dict(
                 max_new_tokens=args.max_tokens,
+                early_exit_layers=early_exit_layers,
                 do_sample=False,
                 output_hidden_states=True,
                 return_dict_in_generate=True,

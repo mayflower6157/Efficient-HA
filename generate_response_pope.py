@@ -235,11 +235,8 @@ def generate_ids(model, inputs, args):
             max_new_tokens=args.max_tokens,
             custom_generate="transformers-community/dola",
             dola_layers=early_exit_layers,
-            do_sample=False,
             repetition_penalty=1.2,
             trust_remote_code=True,
-            return_dict_in_generate=True,
-            output_hidden_states=True,
         )
 
     if method == "deco":

@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "adversarial",
+  "Method": "greedy",
+  "ConfusionMatrix": [
+    [
+      1340,
+      160
+    ],
+    [
+      493,
+      1007
+    ]
+  ],
+  "Accuracy": 0.7823333333333333,
+  "TP": 1340,
+  "FP": 160,
+  "FN": 493,
+  "TN": 1007,
+  "Report": {
+    "0": {
+      "precision": 0.8628963153384748,
+      "recall": 0.6713333333333333,
+      "f1-score": 0.7551556055493064,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.7310420076377523,
+      "recall": 0.8933333333333333,
+      "f1-score": 0.804080408040804,
+      "support": 1500.0
+    },
+    "accuracy": 0.7823333333333333,
+    "macro avg": {
+      "precision": 0.7969691614881136,
+      "recall": 0.7823333333333333,
+      "f1-score": 0.7796180067950552,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.7969691614881135,
+      "recall": 0.7823333333333333,
+      "f1-score": 0.7796180067950551,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/llava-hf/llava-1.5-7b-hf/greedy/POPE_type_adversarial_greedy_detailed.jsonl"
+}

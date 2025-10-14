@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "popular",
+  "Method": "greedy",
+  "ConfusionMatrix": [
+    [
+      1340,
+      160
+    ],
+    [
+      288,
+      1212
+    ]
+  ],
+  "Accuracy": 0.8506666666666667,
+  "TP": 1340,
+  "FP": 160,
+  "FN": 288,
+  "TN": 1212,
+  "Report": {
+    "0": {
+      "precision": 0.8833819241982507,
+      "recall": 0.808,
+      "f1-score": 0.8440111420612814,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8230958230958231,
+      "recall": 0.8933333333333333,
+      "f1-score": 0.8567774936061381,
+      "support": 1500.0
+    },
+    "accuracy": 0.8506666666666667,
+    "macro avg": {
+      "precision": 0.8532388736470369,
+      "recall": 0.8506666666666667,
+      "f1-score": 0.8503943178337097,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8532388736470369,
+      "recall": 0.8506666666666667,
+      "f1-score": 0.8503943178337098,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/llava-hf/llava-1.5-7b-hf/greedy/POPE_type_popular_greedy_detailed.jsonl"
+}
