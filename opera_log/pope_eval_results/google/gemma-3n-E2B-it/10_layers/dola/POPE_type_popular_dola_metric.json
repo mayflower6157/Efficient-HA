@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "popular",
+  "Method": "dola",
+  "ConfusionMatrix": [
+    [
+      1268,
+      232
+    ],
+    [
+      218,
+      1282
+    ]
+  ],
+  "Accuracy": 0.85,
+  "TP": 1268,
+  "FP": 232,
+  "FN": 218,
+  "TN": 1282,
+  "Report": {
+    "0": {
+      "precision": 0.8467635402906208,
+      "recall": 0.8546666666666667,
+      "f1-score": 0.8506967485069675,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8532974427994616,
+      "recall": 0.8453333333333334,
+      "f1-score": 0.8492967180174146,
+      "support": 1500.0
+    },
+    "accuracy": 0.85,
+    "macro avg": {
+      "precision": 0.8500304915450412,
+      "recall": 0.8500000000000001,
+      "f1-score": 0.849996733262191,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8500304915450412,
+      "recall": 0.85,
+      "f1-score": 0.849996733262191,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3n-E2B-it/10_layers/dola/POPE_type_popular_dola_detailed.jsonl"
+}

@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "popular",
+  "Method": "beam",
+  "ConfusionMatrix": [
+    [
+      1318,
+      182
+    ],
+    [
+      319,
+      1181
+    ]
+  ],
+  "Accuracy": 0.833,
+  "TP": 1318,
+  "FP": 182,
+  "FN": 319,
+  "TN": 1181,
+  "Report": {
+    "0": {
+      "precision": 0.8664710198092443,
+      "recall": 0.7873333333333333,
+      "f1-score": 0.8250087320991967,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8051313378130727,
+      "recall": 0.8786666666666667,
+      "f1-score": 0.8402932738284986,
+      "support": 1500.0
+    },
+    "accuracy": 0.833,
+    "macro avg": {
+      "precision": 0.8358011788111586,
+      "recall": 0.833,
+      "f1-score": 0.8326510029638476,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8358011788111585,
+      "recall": 0.833,
+      "f1-score": 0.8326510029638476,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3n-E2B-it/beam/POPE_type_popular_beam_detailed.jsonl"
+}

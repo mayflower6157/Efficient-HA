@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "popular",
+  "Method": "greedy",
+  "ConfusionMatrix": [
+    [
+      1311,
+      189
+    ],
+    [
+      317,
+      1183
+    ]
+  ],
+  "Accuracy": 0.8313333333333334,
+  "TP": 1311,
+  "FP": 189,
+  "FN": 317,
+  "TN": 1183,
+  "Report": {
+    "0": {
+      "precision": 0.8622448979591837,
+      "recall": 0.7886666666666666,
+      "f1-score": 0.8238161559888579,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8052825552825553,
+      "recall": 0.874,
+      "f1-score": 0.8382352941176471,
+      "support": 1500.0
+    },
+    "accuracy": 0.8313333333333334,
+    "macro avg": {
+      "precision": 0.8337637266208695,
+      "recall": 0.8313333333333333,
+      "f1-score": 0.8310257250532525,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8337637266208694,
+      "recall": 0.8313333333333334,
+      "f1-score": 0.8310257250532526,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3n-E2B-it/greedy/POPE_type_popular_greedy_detailed.jsonl"
+}

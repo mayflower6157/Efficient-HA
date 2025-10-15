@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "adversarial",
+  "Method": "dola",
+  "ConfusionMatrix": [
+    [
+      1299,
+      201
+    ],
+    [
+      328,
+      1172
+    ]
+  ],
+  "Accuracy": 0.8236666666666667,
+  "TP": 1299,
+  "FP": 201,
+  "FN": 328,
+  "TN": 1172,
+  "Report": {
+    "0": {
+      "precision": 0.85360524399126,
+      "recall": 0.7813333333333333,
+      "f1-score": 0.8158719108945354,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.7984019668100799,
+      "recall": 0.866,
+      "f1-score": 0.8308282699072593,
+      "support": 1500.0
+    },
+    "accuracy": 0.8236666666666667,
+    "macro avg": {
+      "precision": 0.82600360540067,
+      "recall": 0.8236666666666667,
+      "f1-score": 0.8233500904008973,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8260036054006699,
+      "recall": 0.8236666666666667,
+      "f1-score": 0.8233500904008972,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3n-E4B-it/10_layers/dola/POPE_type_adversarial_dola_detailed.jsonl"
+}

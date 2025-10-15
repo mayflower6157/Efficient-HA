@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "random",
+  "Method": "deco",
+  "ConfusionMatrix": [
+    [
+      1279,
+      221
+    ],
+    [
+      187,
+      1223
+    ]
+  ],
+  "Accuracy": 0.8597938144329897,
+  "TP": 1279,
+  "FP": 221,
+  "FN": 187,
+  "TN": 1223,
+  "Report": {
+    "0": {
+      "precision": 0.8469529085872576,
+      "recall": 0.8673758865248227,
+      "f1-score": 0.8570427470217239,
+      "support": 1410.0
+    },
+    "1": {
+      "precision": 0.8724420190995907,
+      "recall": 0.8526666666666667,
+      "f1-score": 0.8624409979770735,
+      "support": 1500.0
+    },
+    "accuracy": 0.8597938144329897,
+    "macro avg": {
+      "precision": 0.8596974638434242,
+      "recall": 0.8600212765957447,
+      "f1-score": 0.8597418724993987,
+      "support": 2910.0
+    },
+    "weighted avg": {
+      "precision": 0.8600916253461921,
+      "recall": 0.8597938144329897,
+      "f1-score": 0.8598253506069556,
+      "support": 2910.0
+    }
+  },
+  "TotalSamples": 2910,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3n-E4B-it/10_layers/deco/POPE_type_random_deco_detailed.jsonl"
+}

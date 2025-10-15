@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "adversarial",
+  "Method": "deco",
+  "ConfusionMatrix": [
+    [
+      1301,
+      199
+    ],
+    [
+      322,
+      1178
+    ]
+  ],
+  "Accuracy": 0.8263333333333334,
+  "TP": 1301,
+  "FP": 199,
+  "FN": 322,
+  "TN": 1178,
+  "Report": {
+    "0": {
+      "precision": 0.8554829339143064,
+      "recall": 0.7853333333333333,
+      "f1-score": 0.818908585331943,
+      "support": 1500.0
+    },
+    "1": {
+      "precision": 0.8016019716574245,
+      "recall": 0.8673333333333333,
+      "f1-score": 0.8331732308677554,
+      "support": 1500.0
+    },
+    "accuracy": 0.8263333333333334,
+    "macro avg": {
+      "precision": 0.8285424527858655,
+      "recall": 0.8263333333333334,
+      "f1-score": 0.8260409080998492,
+      "support": 3000.0
+    },
+    "weighted avg": {
+      "precision": 0.8285424527858656,
+      "recall": 0.8263333333333334,
+      "f1-score": 0.8260409080998491,
+      "support": 3000.0
+    }
+  },
+  "TotalSamples": 3000,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/google/gemma-3n-E2B-it/10_layers/deco/POPE_type_adversarial_deco_detailed.jsonl"
+}
