@@ -1,0 +1,100 @@
+{"image": "COCO_val2014_000000310196.jpg", "question": "Is there a snowboard in the image?", "response": "Yes, there is a snowboard in", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000310196.jpg", "question": "Is there a car in the image?", "response": "There is no car in the image.", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000310196.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000310196.jpg", "question": "Is there a sandwich in the image?", "response": "There is no existence of a sandwich in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000310196.jpg", "question": "Is there a skis in the image?", "response": "Yes, there is a pair of sk", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000310196.jpg", "question": "Is there a couch in the image?", "response": "No, there is no couch in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000210789.jpg", "question": "Is there a truck in the image?", "response": "Yes, there is a truck in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000210789.jpg", "question": "Is there a pizza in the image?", "response": "There is no existence of a pizza in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000210789.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000210789.jpg", "question": "Is there a sink in the image?", "response": "There is no existence of a sink in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000210789.jpg", "question": "Is there an umbrella in the imange?", "response": "Yes, there is an umbrella in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000210789.jpg", "question": "Is there a cell phone in the image?", "response": "There is no existence of a cell phone", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000429109.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000429109.jpg", "question": "Is there a sheep in the image?", "response": "No, there is no sheep in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000429109.jpg", "question": "Is there a bicycle in the image?", "response": "Yes, there is a bicycle in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000429109.jpg", "question": "Is there a broccoli in the image?", "response": "No, there is no broccoli in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000429109.jpg", "question": "Is there a car in the image?", "response": "Yes, there is a car in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000211674.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000211674.jpg", "question": "Is there a teddy bear in the image?", "response": "There is no existence of a teddy", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000211674.jpg", "question": "Is there a potted plant in the image?", "response": "Yes, there is a potted plant", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000211674.jpg", "question": "Is there a broccoli in the image?", "response": "No, there is no broccoli in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000211674.jpg", "question": "Is there a car in the image?", "response": "Yes, there is a car in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000211674.jpg", "question": "Is there an orange in the imange?", "response": "There is no existence of any orange in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000458338.jpg", "question": "Is there a traffic light in the image?", "response": "Yes, there is a traffic light in", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000458338.jpg", "question": "Is there a train in the image?", "response": "There is no existence of a train in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000458338.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000458338.jpg", "question": "Is there a surfboard in the image?", "response": "No, there is no surfboard in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000458338.jpg", "question": "Is there a car in the image?", "response": "Yes, there is a car in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000458338.jpg", "question": "Is there a kite in the image?", "response": "No, there is no kite visible in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000283412.jpg", "question": "Is there a dog in the image?", "response": "Yes, there is a dog in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000283412.jpg", "question": "Is there a toaster in the image?", "response": "No, there is no toaster in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000283412.jpg", "question": "Is there a dining table in the image?", "response": "Yes, there is a dining table in", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000283412.jpg", "question": "Is there a sports ball in the image?", "response": "There is no existence of a sports ball", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000283412.jpg", "question": "Is there a bed in the image?", "response": "Yes, there is a bed in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000283412.jpg", "question": "Is there a book in the image?", "response": "Yes, there is a book in the", "prediction": 1, "label": 0, "correct": false}
+{"image": "COCO_val2014_000000265719.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000265719.jpg", "question": "Is there a traffic light in the image?", "response": "No, there is no traffic light in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000265719.jpg", "question": "Is there a spoon in the image?", "response": "Yes, there is a spoon in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000265719.jpg", "question": "Is there a fork in the image?", "response": "Yes, there is a fork in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000265719.jpg", "question": "Is there a truck in the image?", "response": "No, there is no truck in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000461331.jpg", "question": "Is there a tv in the image?", "response": "No, there is no TV in the", "prediction": 0, "label": 1, "correct": false}
+{"image": "COCO_val2014_000000461331.jpg", "question": "Is there a bowl in the image?", "response": "There is no bowl in the image.", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000461331.jpg", "question": "Is there a toaster in the image?", "response": "Yes, there is a toaster in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000461331.jpg", "question": "Is there a cow in the image?", "response": "There is no existence of a cow in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000461331.jpg", "question": "Is there a microwave in the image?", "response": "Yes, there is a microwave in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000461331.jpg", "question": "Is there a laptop in the image?", "response": "No, there is no laptop in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000544456.jpg", "question": "Is there a backpack in the image?", "response": "Yes, there is a backpack in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000544456.jpg", "question": "Is there a cell phone in the image?", "response": "There is no existence of a cell phone", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000544456.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000544456.jpg", "question": "Is there a couch in the image?", "response": "There is no existence of a couch in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000544456.jpg", "question": "Is there a skis in the image?", "response": "Yes, there is a pair of sk", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000544456.jpg", "question": "Is there a tennis racket in the image?", "response": "No, there is no tennis racket in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000017708.jpg", "question": "Is there a bird in the image?", "response": "Yes, there is a seagull", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000017708.jpg", "question": "Is there a fire hydrant in the image?", "response": "No, there is no fire hydrant", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000017708.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000017708.jpg", "question": "Is there a bed in the image?", "response": "There is no existence of a bed in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000017708.jpg", "question": "Is there a boat in the image?", "response": "Yes, there is a boat in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000017708.jpg", "question": "Is there a bench in the image?", "response": "There is no existence of a bench in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000574692.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000574692.jpg", "question": "Is there an orange in the imange?", "response": "Yes, there are oranges in the image", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000574692.jpg", "question": "Is there a cow in the image?", "response": "There is no existence of a cow in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000574692.jpg", "question": "Is there a bottle in the image?", "response": "Yes, there is a bottle in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000574692.jpg", "question": "Is there a bed in the image?", "response": "There is no bed in the image.", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000353180.jpg", "question": "Is there a backpack in the image?", "response": "There is no existence of a backpack in", "prediction": 0, "label": 1, "correct": false}
+{"image": "COCO_val2014_000000353180.jpg", "question": "Is there a potted plant in the image?", "response": "There is no existence of any potted", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000353180.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000353180.jpg", "question": "Is there a bus in the image?", "response": "Yes, there is a bus in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000239444.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000239444.jpg", "question": "Is there an airplane in the imange?", "response": "No, there is no airplane in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000239444.jpg", "question": "Is there a dining table in the image?", "response": "Yes, there is a dining table in", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000239444.jpg", "question": "Is there a chair in the image?", "response": "Yes, there is a chair in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000239444.jpg", "question": "Is there a horse in the image?", "response": "No, there is no horse in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000569839.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000569839.jpg", "question": "Is there a zebra in the image?", "response": "There is no existence of a zebra", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000569839.jpg", "question": "Is there a sandwich in the image?", "response": "Yes, there is a sandwich in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000569839.jpg", "question": "Is there a tie in the image?", "response": "There is no existence of a tie in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000569839.jpg", "question": "Is there a hot dog in the image?", "response": "There is no existence of a hot dog", "prediction": 0, "label": 1, "correct": false}
+{"image": "COCO_val2014_000000569839.jpg", "question": "Is there a car in the image?", "response": "There is no existence of a car in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000219622.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000219622.jpg", "question": "Is there a carrot in the image?", "response": "No, there is no carrot in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000219622.jpg", "question": "Is there a car in the image?", "response": "Yes, there is a car in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000219622.jpg", "question": "Is there a potted plant in the image?", "response": "There is no existence of any potted", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000219622.jpg", "question": "Is there a frisbee in the image?", "response": "Yes, there is a frisbee", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000219622.jpg", "question": "Is there a chair in the image?", "response": "There is no existence of a chair in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000300368.jpg", "question": "Is there a knife in the image?", "response": "Yes, there is a knife in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000300368.jpg", "question": "Is there a teddy bear in the image?", "response": "No, there is no teddy bear", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000300368.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000300368.jpg", "question": "Is there a hot dog in the image?", "response": "No, there is no hot dog in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000300368.jpg", "question": "Is there a cake in the image?", "response": "Yes, there is a cake in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000300368.jpg", "question": "Is there a tie in the image?", "response": "Yes, there is a tie in the", "prediction": 1, "label": 0, "correct": false}
+{"image": "COCO_val2014_000000482476.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000482476.jpg", "question": "Is there a keyboard in the image?", "response": "No, there is no keyboard visible in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000482476.jpg", "question": "Is there a remote in the image?", "response": "No, there is no remote in the", "prediction": 0, "label": 1, "correct": false}
+{"image": "COCO_val2014_000000482476.jpg", "question": "Is there a frisbee in the image?", "response": "No, there is no frisbee", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000482476.jpg", "question": "Is there a handbag in the image?", "response": "Yes, there is a handbag in", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000482476.jpg", "question": "Is there an elephant in the imange?", "response": "There is no existence of an elephant in", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000131115.jpg", "question": "Is there a baseball glove in the image?", "response": "Yes, there is a baseball glove in", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000131115.jpg", "question": "Is there a person in the image?", "response": "Yes, there is a person in the", "prediction": 1, "label": 1, "correct": true}
+{"image": "COCO_val2014_000000131115.jpg", "question": "Is there a sheep in the image?", "response": "No, there is no sheep in the", "prediction": 0, "label": 0, "correct": true}
+{"image": "COCO_val2014_000000131115.jpg", "question": "Is there a baseball bat in the image?", "response": "Yes, there is a baseball bat in", "prediction": 1, "label": 1, "correct": true}

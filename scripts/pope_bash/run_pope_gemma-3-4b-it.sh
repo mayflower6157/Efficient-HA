@@ -7,14 +7,14 @@ DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
 DEVICE="cuda:1"
 BATCH_SIZE=1
 MAX_TOKENS=8
-EARLY_EXIT_LAYERS=10
+EARLY_EXIT_LAYERS=8
 
 # Output directory
 OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # Evaluation methods & POPE types
-METHODS=("beam" "greedy" "dola" "deco")
-#METHODS=("dola")
+#METHODS=("beam" "greedy" "dola" "deco")
+METHODS=("dola" "deco")
 POPE_TYPES=("random" "popular" "adversarial")
 
 # ======== Run Loop ========

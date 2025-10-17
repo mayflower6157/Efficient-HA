@@ -658,7 +658,6 @@ def evolve_deco_greedy(model=None, args=None):
 
             `model.config.is_encoder_decoder=True`.
         """
-        # all your DECO code moves here ↓↓↓
         # init values
 
         # Usage fixed code
@@ -773,38 +772,110 @@ def evolve_deco_greedy(model=None, args=None):
 
         # --- Alpha scheduler helper ---
         def get_dynamic_alpha(
-            alpha_schedule, alpha, cur_len, max_new_tokens, early_exit_layer=None
+            alpha_schedule,
+            alpha,
+            cur_len,
+            max_new_tokens,
+            early_exit_layer=None,
+            current_entropy=None,
         ):
             """
-            Handles both token-wise (temporal) and layer-wise alpha scheduling.
+            Handles token-wise (temporal), layer-wise, and entropy-based alpha scheduling.
+
+            Args:
+                alpha_schedule: dict, from config["alpha_schedule"]
+                alpha: float, base alpha value
+                cur_len: int, current generated token length
+                max_new_tokens: int, total max tokens for generation
+                early_exit_layer: int, current layer index (optional)
+                current_entropy: float, dynamic entropy value (optional, required for entropy mode)
             """
+
             if not alpha_schedule:
+                logger.debug(
+                    "[α-scheduler] No alpha_schedule provided, using base alpha=%.3f",
+                    alpha,
+                )
                 return alpha
 
+            schedule_type = alpha_schedule.get("type", "time")
+            logger.debug(f"[α-scheduler] Type='{schedule_type}', Base α={alpha:.3f}")
+
             # --- Case 1: Temporal schedule ---
-            if alpha_schedule.get("type", "time") == "time":
+            if schedule_type == "time":
                 start = alpha_schedule.get("start", alpha)
                 end = alpha_schedule.get("end", alpha)
                 mode = alpha_schedule.get("mode", "linear")
-
                 progress = min(cur_len / max_new_tokens, 1.0)
+
+                logger.debug(
+                    f"[α-scheduler:time] start={start:.3f}, end={end:.3f}, mode={mode}, "
+                    f"progress={progress*100:.1f}%"
+                )
+
                 if mode == "linear":
-                    return start + progress * (end - start)
+                    alpha_new = start + progress * (end - start)
                 elif mode == "cosine":
-                    return start + 0.5 * (1 - math.cos(math.pi * progress)) * (
+                    alpha_new = start + 0.5 * (1 - math.cos(math.pi * progress)) * (
                         end - start
                     )
                 else:
-                    return alpha
+                    alpha_new = alpha
+
+                logger.debug(f"[α-scheduler:time] α updated → {alpha_new:.3f}")
+                return alpha_new
 
             # --- Case 2: Layer-wise schedule ---
-            elif alpha_schedule.get("type") == "layer":
+            elif schedule_type == "layer":
                 layer_map = alpha_schedule.get("schedule", {})
                 if early_exit_layer is not None:
-                    return layer_map.get(str(early_exit_layer), alpha)
-                else:
-                    return alpha
+                    alpha_new = layer_map.get(str(early_exit_layer), alpha)
+                    logger.debug(
+                        f"[α-scheduler:layer] layer={early_exit_layer}, α={alpha_new:.3f}"
+                    )
+                    return alpha_new
+                logger.debug(
+                    "[α-scheduler:layer] No early_exit_layer provided, keeping α=%.3f",
+                    alpha,
+                )
+                return alpha
 
+            # --- Case 3: Entropy-based schedule ---
+            elif schedule_type == "entropy":
+                schedule = alpha_schedule.get("schedule", {})
+                entropy_ranges = alpha_schedule.get("entropy_ranges", {})
+                mode = alpha_schedule.get("mode", "adaptive")
+
+                logger.debug(
+                    f"[α-scheduler:entropy] mode={mode}, entropy={current_entropy}, schedule={schedule}"
+                )
+
+                if mode == "adaptive" and current_entropy is not None:
+                    for level, (low, high) in entropy_ranges.items():
+                        if low <= current_entropy < high:
+                            alpha_new = schedule.get(level, alpha)
+                            logger.info(
+                                f"[α-scheduler:entropy] Entropy={current_entropy:.3f} "
+                                f"→ Level='{level}' [{low:.2f}, {high:.2f}] → α={alpha_new:.3f}"
+                            )
+                            return alpha_new
+
+                    logger.debug(
+                        f"[α-scheduler:entropy] Entropy={current_entropy:.3f} out of defined range, α=%.3f",
+                        alpha,
+                    )
+                else:
+                    logger.debug(
+                        f"[α-scheduler:entropy] Adaptive mode disabled or missing entropy, α=%.3f",
+                        alpha,
+                    )
+                return alpha
+
+            # --- Fallback ---
+            logger.warning(
+                f"[α-scheduler] Unknown schedule type '{schedule_type}', using base α=%.3f",
+                alpha,
+            )
             return alpha
 
         while self._has_unfinished_sequences(
@@ -1016,7 +1087,11 @@ def evolve_deco_greedy(model=None, args=None):
             """
 
             # Fixed code
-            # --- Compute dynamic alpha (temporal or layer-wise) ---
+            # --- Compute dynamic alpha (temporal or layer-wise or entropy) ---
+            current_entropy_val = float(
+                entropy.mean().item()
+            )  # ✅ Scalar value for scheduler
+            logger.debug(f"[DECO] Entropy value for scheduler: {current_entropy_val}")
             alpha_dynamic = get_dynamic_alpha(
                 alpha_schedule,
                 alpha,
@@ -1027,11 +1102,14 @@ def evolve_deco_greedy(model=None, args=None):
                     if selected_premature_layer_idx
                     else None
                 ),
+                current_entropy=current_entropy_val,
             )
             if alpha_dynamic != alpha:
                 logger.debug(
                     f"[DECO] Dynamic alpha updated from {alpha} → {alpha_dynamic}"
                 )
+            else:
+                logger.debug(f"[DECO] Dynamic alpha not updated, keeping {alpha}")
             alpha = alpha_dynamic
 
             final_token_logits = compute_final_logits(

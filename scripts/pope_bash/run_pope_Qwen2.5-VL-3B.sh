@@ -4,7 +4,7 @@ set -euo pipefail
 # ======== User Config ========
 MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
 DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
-DEVICE="cuda:4"
+DEVICE="cuda:0"
 BATCH_SIZE=1
 MAX_TOKENS=8
 EARLY_EXIT_LAYERS=10
@@ -13,7 +13,7 @@ EARLY_EXIT_LAYERS=10
 OUTPUT_DIR="./opera_log/pope_eval_results"
 
 # List of generation methods you want to run
-METHODS=("beam" "greedy" "dola" "deco")
+METHODS=("deco")
 
 # POPE types
 POPE_TYPES=("random" "popular" "adversarial")
@@ -47,7 +47,7 @@ for METHOD in "${METHODS[@]}"; do
         --max_tokens "$MAX_TOKENS" \
         --early_exit_layers "$EARLY_EXIT_LAYERS" \
         --output "$RESP_DIR" \
-        # --debug 
+        --debug 
         # --silent
       echo ">>> Finished generating responses"
     else
