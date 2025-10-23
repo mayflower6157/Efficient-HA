@@ -12,22 +12,36 @@ EARLY_EXIT_LAYERS=10
 # Base output directory
 OUTPUT_DIR="./opera_log/chair_eval_results"
 
-# List of generation methods you want to run
-METHODS=("deco")
+# List of runs.
+# Format per entry: method|layers|variant
+RUN_CONFIGS=(
+  "deco|${EARLY_EXIT_LAYERS}|"
+  # "deco|${EARLY_EXIT_LAYERS}|fixed"
+  # "deco|${EARLY_EXIT_LAYERS}|improv"
+  # "deco|8|improv"
+)
 
 # ======== Run Loop ========
-for METHOD in "${METHODS[@]}"; do
-  # Directory structure: add <LAYERS> folder only for dola/deco
-  if [[ "$METHOD" == "dola" || "$METHOD" == "deco" ]]; then
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/responses_fine_tuned.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/metric_fine_tuned.json"
+for CONFIG in "${RUN_CONFIGS[@]}"; do
+  IFS='|' read -r METHOD LAYER_OVERRIDE VARIANT <<< "$CONFIG"
+  [[ -n "$METHOD" ]] || continue
+
+  RUN_LAYERS="${LAYER_OVERRIDE:-$EARLY_EXIT_LAYERS}"
+  RUN_DIR="${OUTPUT_DIR}/${MODEL_ID}"
+  if [[ -n "$LAYER_OVERRIDE" ]]; then
+    RUN_DIR+="/${METHOD}-${LAYER_OVERRIDE}-layers"
   else
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses_fine_tuned.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/metric_fine_tuned.json"
+    RUN_DIR+="/${METHOD}"
   fi
 
-  # Make sure directories exist
-  mkdir -p "$(dirname "$RESP_FILE")"
+  if [[ -n "$VARIANT" && "$VARIANT" != "default" ]]; then
+    RUN_DIR+="-${VARIANT}"
+  fi
+
+  RESP_FILE="${RUN_DIR}/responses.json"
+  METRIC_FILE="${RUN_DIR}/metrics.json"
+
+  mkdir -p "$RUN_DIR"
 
   # Step 1: Generate responses if not already present
   if [ ! -f "$RESP_FILE" ]; then
@@ -38,7 +52,7 @@ for METHOD in "${METHODS[@]}"; do
       --datapath "$DATA_PATH" \
       --device "$DEVICE" \
       --max_tokens "$MAX_TOKENS" \
-      --early_exit_layers "$EARLY_EXIT_LAYERS" \
+      --early_exit_layers "$RUN_LAYERS" \
       --output "$RESP_FILE" 
       # --debug \
       # --silent 

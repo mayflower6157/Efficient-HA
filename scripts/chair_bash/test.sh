@@ -17,7 +17,7 @@ METHODS=("dola")
 # ========= Run Loop =========
 for METHOD in "${METHODS[@]}"; do
     RESP_FILE="test/responses.json"
-    METRIC_FILE="test/metric.json"
+    METRIC_FILE="test/metrics.json"
 
     # Step 1: Generate responses if not already present
     if [ ! -f "$RESP_FILE" ]; then
@@ -50,5 +50,4 @@ for METHOD in "${METHODS[@]}"; do
 
     echo
 done
-
 
