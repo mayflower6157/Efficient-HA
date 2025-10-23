@@ -5,9 +5,9 @@ set -euo pipefail
 MODEL_ID="google/gemma-3n-E4B-it"
 DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
 COCO_ANN="/home/li0007xu/Reasoning/Deco/annotations_2014_coco"
-DEVICE="cuda:4"
+DEVICE="cuda:5"
 MAX_TOKENS=64
-EARLY_EXIT_LAYERS=8
+EARLY_EXIT_LAYERS=10
 
 # Base output directory
 OUTPUT_DIR="./opera_log/chair_eval_results"
@@ -15,7 +15,7 @@ OUTPUT_DIR="./opera_log/chair_eval_results"
 # List of runs.
 # Format per entry: method|layers|variant
 RUN_CONFIGS=(
-  "deco|${EARLY_EXIT_LAYERS}|"
+  "deco|${EARLY_EXIT_LAYERS}|alpha-schedule"
   # "deco|${EARLY_EXIT_LAYERS}|fixed"
   # "deco|${EARLY_EXIT_LAYERS}|improv"
   # "deco|8|improv"
