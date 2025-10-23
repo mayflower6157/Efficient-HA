@@ -1,0 +1,48 @@
+{
+  "POPE_Type": "random",
+  "Method": "deco",
+  "ConfusionMatrix": [
+    [
+      1342,
+      158
+    ],
+    [
+      69,
+      1341
+    ]
+  ],
+  "Accuracy": 0.9219931271477664,
+  "TP": 1342,
+  "FP": 158,
+  "FN": 69,
+  "TN": 1341,
+  "Report": {
+    "0": {
+      "precision": 0.8945963975983989,
+      "recall": 0.951063829787234,
+      "f1-score": 0.9219663114472327,
+      "support": 1410.0
+    },
+    "1": {
+      "precision": 0.9510985116938342,
+      "recall": 0.8946666666666667,
+      "f1-score": 0.9220199244245963,
+      "support": 1500.0
+    },
+    "accuracy": 0.9219931271477664,
+    "macro avg": {
+      "precision": 0.9228474546461165,
+      "recall": 0.9228652482269504,
+      "f1-score": 0.9219931179359145,
+      "support": 2910.0
+    },
+    "weighted avg": {
+      "precision": 0.9237211986785202,
+      "recall": 0.9219931271477664,
+      "f1-score": 0.9219939470025748,
+      "support": 2910.0
+    }
+  },
+  "TotalSamples": 2910,
+  "DetailFile": "/home/li0007xu/mayflower/Efficient-HA/opera_log/pope_eval_results/Qwen/Qwen2.5-VL-3B-Instruct/10_layers/deco/POPE_type_random_deco_detailed.jsonl"
+}

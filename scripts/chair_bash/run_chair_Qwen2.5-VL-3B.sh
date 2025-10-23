@@ -5,9 +5,9 @@ set -euo pipefail
 MODEL_ID="Qwen/Qwen2.5-VL-3B-Instruct"
 DATA_PATH="/home/li0007xu/EH/Efficient-HA/val2014"
 COCO_ANN="/home/li0007xu/Reasoning/Deco/annotations_2014_coco"
-DEVICE="cuda:4"
+DEVICE="cuda:0"
 MAX_TOKENS=64
-EARLY_EXIT_LAYERS=8
+EARLY_EXIT_LAYERS=10
 
 # Base output directory
 OUTPUT_DIR="./opera_log/chair_eval_results"
@@ -19,11 +19,11 @@ METHODS=("deco" )
 for METHOD in "${METHODS[@]}"; do
   # Directory structure: add <LAYERS> folder only for dola/deco
   if [[ "$METHOD" == "dola" || "$METHOD" == "deco" ]]; then
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/responses_fine_tuned.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/metric_fine_tuned.json"
+    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/responses_alpha_schedule.json"
+    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${EARLY_EXIT_LAYERS}_layers/${METHOD}/metric_alpha_schedule.json"
   else
-    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses_fine_tuned.json"
-    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/metric_fine_tuned.json"
+    RESP_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/responses_alpha_schedule.json"
+    METRIC_FILE="${OUTPUT_DIR}/${MODEL_ID}/${METHOD}/metric_alpha_schedule.json"
   fi
 
   # Make sure directories exist

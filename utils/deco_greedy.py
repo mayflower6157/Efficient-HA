@@ -854,7 +854,7 @@ def evolve_deco_greedy(model=None, args=None):
                     for level, (low, high) in entropy_ranges.items():
                         if low <= current_entropy < high:
                             alpha_new = schedule.get(level, alpha)
-                            logger.info(
+                            logger.debug(
                                 f"[α-scheduler:entropy] Entropy={current_entropy:.3f} "
                                 f"→ Level='{level}' [{low:.2f}, {high:.2f}] → α={alpha_new:.3f}"
                             )

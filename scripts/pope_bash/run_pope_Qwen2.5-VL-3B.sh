@@ -47,7 +47,7 @@ for METHOD in "${METHODS[@]}"; do
         --max_tokens "$MAX_TOKENS" \
         --early_exit_layers "$EARLY_EXIT_LAYERS" \
         --output "$RESP_DIR" \
-        --debug 
+        # --debug 
         # --silent
       echo ">>> Finished generating responses"
     else
