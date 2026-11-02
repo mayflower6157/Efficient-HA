@@ -1,10 +1,10 @@
 # Efficient-HA
 
-**Experimental codebase used in Ke Xu's research participation in SAVER (AAAI 2026): vision-language hallucination evaluation and decoding interventions.**
+**Experimental codebase used in Ke Xu's research participation in SAKED: vision-language hallucination evaluation and decoding interventions.**
 
-[Paper: SAVER](https://arxiv.org/abs/2508.03177) · [Decoding implementation](utils/deco_greedy.py) · [Experiment configurations](configs/deco) · [Recorded experiments](opera_log)
+[Paper: SAKED](https://arxiv.org/abs/2602.09825) · [Decoding implementation](utils/deco_greedy.py) · [Experiment configurations](configs/deco) · [Recorded experiments](opera_log)
 
-SAVER studies hallucinations in large vision-language models, including those induced by stylized images. This repository documents my experimental work within that research: baseline reproduction, decoding modifications, and model evaluation. It includes research adaptations and development artifacts; it is not a claim that every implementation here is the published SAVER algorithm or that every paper result can be reproduced from this branch.
+SAKED studies how instability across attention heads, model layers, and decoding tokens relates to hallucinations in large vision-language models, and uses stability-aware knowledge-enhanced decoding to improve generation. This repository documents my experimental work within that research: baseline reproduction, decoding modifications, and model evaluation. It includes research adaptations and development artifacts; it is not a claim that every implementation here is the SAKED algorithm or that every paper result can be reproduced from this branch.
 
 ## Research contributions
 
@@ -13,7 +13,7 @@ SAVER studies hallucinations in large vision-language models, including those in
 - **Candidate selection:** modifications to candidate-token filtering rules and thresholds, with confidence checks and intermediate diagnostics.
 - **Baseline reproduction:** OPERA/DeCo experiments on LLaVA and MiniGPT-4 as part of the research work. The current top-level runners expose the methods listed below; an OPERA or MiniGPT-4 command should not be inferred from the historical scope alone.
 
-The implementation builds on existing methods and third-party software. Personal contribution here means the experimental work and adaptations above, not sole authorship of the entire codebase or authorship of the SAVER paper.
+The implementation builds on existing methods and third-party software. Personal contribution here means the experimental work and adaptations above, not sole authorship of the entire codebase or authorship of the SAKED paper.
 
 ## What is in this branch?
 
@@ -210,6 +210,6 @@ No aggregate performance improvement is claimed in this README. A fair result re
 
 Related paper:
 
-**SAVER: Mitigating Hallucinations in Large Vision-Language Models via Style-Aware Visual Early Revision** — AAAI 2026. [arXiv:2508.03177](https://arxiv.org/abs/2508.03177).
+**SAKED: Mitigating Hallucination in Large Vision-Language Models via Stability-Aware Knowledge Enhanced Decoding** — arXiv preprint. [arXiv:2602.09825](https://arxiv.org/abs/2602.09825).
 
 This repository uses or adapts existing decoding methods and tools, including OPERA, DeCo, DoLa, VCD, Hugging Face Transformers, and FlashAttention. The header of `chair.py` credits the [original CHAIR implementation](https://github.com/LisaAnne/Hallucination) and its subsequent adaptation. Please retain source attribution and follow the applicable upstream licenses and dataset terms.
